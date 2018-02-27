@@ -2,11 +2,14 @@
 #include <conio.h>
 #include <glad\glad.h>
 #include <glfw3.h>
+#include <assert.h>
 #define MATH_IMPLEMENTATION
 #include<mathutil.h>
 
 #define SCREENWIDHT 800
 #define SCREENHEIGHT 600
+
+#define FATALERROR assert(0);
 
 typedef struct 
 {
@@ -89,8 +92,108 @@ void update_keys()
 {
 	memcpy(in->lastkeys, in->keys, sizeof(ubyte)*GLFW_KEY_LAST);
 }
+
+
+
+typedef struct
+{
+	
+	uint	progId;
+	int		numAttribs;
+} ShaderHandle;
+
+uint compile_shader(uint glenum,const char* source)
+{
+	uint compilecheck = 0;
+	uint shader = glCreateShader(glenum);
+	if(shader == 0) FATALERROR;
+
+	glShaderSource(shader, 1, &source, NULL);
+	glCompileShader(shader);
+
+	glGetShaderiv(shader, GL_COMPILE_STATUS, &compilecheck);
+
+	if(!compilecheck)
+	{
+		uint infolen = 0;
+		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infolen);
+		if(infolen > 1)
+		{
+			char* infoLog = malloc(sizeof(char) * infolen);
+			glGetShaderInfoLog(shader, infolen, NULL, infoLog);
+			printf("Error compiling shader :\n%s\n", infoLog);
+			free(infoLog);
+		}
+		glDeleteShader(shader);
+		FATALERROR;
+	}
+	return shader;
+}
+void dispose_shader(ShaderHandle* sha)
+{
+	if (sha->progId)glDeleteProgram(sha->progId);
+}
+void unuse_shader(ShaderHandle* sha)
+{
+	glUseProgram(0);
+	for (int i = 0; i < sha->numAttribs; i++) {
+		glDisableVertexAttribArray(i);
+	}
+}
+void add_attribute(ShaderHandle* shader,const char* name)
+{
+	printf("Adding attribute %s to program %d", name, shader->progId);
+	glBindAttribLocation(shader->progId, shader->numAttribs++, name);
+}
+uint get_uniform_location(ShaderHandle* shader,const char* name)
+{
+	GLint location = glGetUniformLocation(shader->progId, name);
+	if (location == GL_INVALID_INDEX)
+	{
+		printf("failed to get uniform");
+		FATALERROR;
+	}
+	return location;
+}
+
+
+
+void use_shader(ShaderHandle* shader)
+{
+	glUseProgram(shader->progId);
+	for (int i = 0; i < shader->numAttribs; i++) {
+		glEnableVertexAttribArray(i);
+	}
+}
+
+void link_shader(ShaderHandle* shader,uint vert,uint frag)
+{
+	printf("Linking program %d\n", shader->progId);
+	glLinkProgram(shader->progId);
+	uint linked = 0;
+	glGetProgramiv(shader->progId, GL_LINK_STATUS, &linked);
+
+	if(!linked)
+	{
+		uint infolen = 0;
+		glGetProgramiv(shader->progId, GL_INFO_LOG_LENGTH, &infolen);
+		if(infolen > 1)
+		{
+			char* infolog = malloc(sizeof(char)*infolen);
+			glGetProgramInfoLog(shader->progId, infolen, NULL, infolog);
+			printf("Error linking program \n %s", infolog);
+			free(infolog);
+		}
+		glDeleteProgram(shader->progId);
+		FATALERROR;
+	}
+
+	glDeleteShader(vert);
+	glDeleteShader(frag);
+}
 int main()
 {
+	
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -116,7 +219,7 @@ int main()
 	init_keys();
 
 
-
+	mat4 ortho = orthomat(0.f,800.f,0.f,600.f,0.1f,100.f);
 
 	while (!glfwWindowShouldClose(window))
 	{
