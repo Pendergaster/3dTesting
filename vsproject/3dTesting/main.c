@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <stdio.h>
 #include <conio.h>
 #include <glad\glad.h>
@@ -27,15 +28,15 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 }
 
 
-static InputManager* in;
+static InputManager in;
 void set_key(int key,ubyte state)
 {
-	in->keys[key] = state;
+	in.keys[key] = state;
 }
 void set_mouse( float x, float y)
 {
-	in->mouseX = x;
-	in->mouseY = y;
+	in.mouseX = x;
+	in.mouseY = y;
 }
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
@@ -60,15 +61,15 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 int key_pressed(int key)
 {
 
-	return in->keys[key] == 1 && in->lastkeys[key] == 0;
+	return in.keys[key] == 1 && in.lastkeys[key] == 0;
 }
 int key_down(int key)
 {
-	return in->keys[key] == 1;
+	return in.keys[key] == 1;
 }
 int key_released(int key)
 {
-	return in->keys[key] == 0 && in->lastkeys[key] == 1;
+	return in.keys[key] == 0 && in.lastkeys[key] == 1;
 }
 
 
@@ -76,21 +77,21 @@ int key_released(int key)
 
 void init_keys()
 {
-	in = calloc(1, sizeof(InputManager));
-	in->keys = calloc(GLFW_KEY_LAST,sizeof(ubyte));
-	in->lastkeys = calloc(GLFW_KEY_LAST, sizeof(ubyte));
-	in->mouseX = 0;
-	in->mouseY = 0;
+	int i = GLFW_KEY_LAST;
+	in.keys = calloc(GLFW_KEY_LAST,sizeof(ubyte));
+	in.lastkeys = calloc(GLFW_KEY_LAST, sizeof(ubyte));
+	in.mouseX = 0;
+	in.mouseY = 0;
 }
 void dipose_inputs()
 {
-	free(in->keys);
-	free(in->lastkeys);
-	free(in);
+	free(in.keys);
+	free(in.lastkeys);
+
 }
 void update_keys()
 {
-	memcpy(in->lastkeys, in->keys, sizeof(ubyte)*GLFW_KEY_LAST);
+	memcpy(in.lastkeys, in.keys, sizeof(ubyte)*GLFW_KEY_LAST);
 }
 
 
@@ -193,7 +194,6 @@ void link_shader(ShaderHandle* shader,uint vert,uint frag)
 }
 int main()
 {
-	
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -212,14 +212,28 @@ int main()
 		_getch();
 		return 0;
 	}
+
 	glViewport(0, 0, SCREENWIDHT, SCREENHEIGHT);
 	glfwSetKeyCallback(window, key_callback);
 	glfwSetMouseButtonCallback(window, mouse_button_callback);
 	glfwSetCursorPosCallback(window, cursor_position_callback);
 	init_keys();
 
+	mat4 t = identity();
+	mat4 b = identity();
+	for(int jj = 0; jj < 4;jj++)
+	{
+		b.mat[0][jj] = 1;
+		b.mat[1][jj] = 2;
+		b.mat[2][jj] = 3;
+		b.mat[3][jj] = 4;
+	}
+	mat4 mul = mult_mat4(&b, &b);
+
 
 	mat4 ortho = orthomat(0.f,800.f,0.f,600.f,0.1f,100.f);
+	mat4 proj = perspective(deg_to_rad(45.f), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 100.f);
+
 
 	while (!glfwWindowShouldClose(window))
 	{
