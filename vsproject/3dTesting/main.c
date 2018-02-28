@@ -192,6 +192,75 @@ void link_shader(ShaderHandle* shader,uint vert,uint frag)
 	glDeleteShader(vert);
 	glDeleteShader(frag);
 }
+
+
+#define TXT_FILES(FILE) \
+		FILE(vert_sha)  \
+		FILE(frag_sha)  \
+
+#define PNG_FILES(FILE) \
+		FILE(linux_pingu)\
+
+
+#define JPG_FILES(FILE) \
+		FILE(wall)		\
+
+#define GENERATE_ENUM(ENUM) ENUM,
+
+#define GENERATE_STRING(STRING) #STRING".txt",
+
+#define GENERATE_STRINGPNG(STRING) #STRING".png",
+
+#define GENERATE_STRINGJPG(STRING) #STRING".jpg",
+
+static const char* txt_file_names[] = {
+	TXT_FILES(GENERATE_STRING)
+};
+
+static const char* pic_file_names[] = {
+PNG_FILES(GENERATE_STRINGPNG)
+JPG_FILES(GENERATE_STRINGJPG)
+};
+
+enum txt_files
+{
+	TXT_FILES(GENERATE_ENUM)
+	maxtxtfiles
+};
+
+enum picture_files {
+	PNG_FILES(GENERATE_ENUM)
+	JPG_FILES(GENERATE_ENUM)
+	maxpicfiles
+};
+
+
+typedef struct
+{
+	uint	ID;
+	int		widht;
+	int		height;
+	int		channels;
+} Texture;
+const Texture textureCache[maxpicfiles] = {0};
+Texture loadTexture(const int file)
+{
+	if(textureCache[file].ID != 0)
+	{
+		return textureCache[file];
+	}
+	Texture* tex = &textureCache[file];
+	glGenTextures(1, &tex->ID);
+	glBindTexture(GL_TEXTURE_2D, tex->ID);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+
+}
+
 int main()
 {
 	glfwInit();
