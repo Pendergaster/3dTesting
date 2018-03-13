@@ -927,9 +927,6 @@ int main()
 			glDrawArrays(GL_TRIANGLES, 0, 36);
 		}
 
-
-
-
 		glBindVertexArray(0);
 
 		unuse_shader(&shader);
