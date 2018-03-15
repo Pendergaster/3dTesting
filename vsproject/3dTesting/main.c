@@ -545,9 +545,20 @@ void init_light(Light* l)
 	glBindVertexArray(0);
 
 }
-
+void render_model(ModelHandle* handle,vec3 pos,vec3 rotations,float scale);
 int main()
 {
+
+	mat4 root = { 0 };
+	vec3 aaxis = { 0,1,0 };
+	vec4 pooint = { 1,0,0,1};
+	create_rotate_mat4(&root, aaxis, deg_to_rad(90.f));
+	vec4 res = { 0 };
+	mat4_mult_vec4(&res, &root, &pooint);
+	
+
+	rotate_mat4_X()
+
 	/*unsigned char* kkkkkkk = NULL;
 	kkkkkkk = "hei";
 	printf("%s", kkkkkkk);*/
@@ -982,4 +993,16 @@ int main()
 	dipose_inputs();
 	glfwTerminate();
 	return 1;
+}
+void render_model(ModelHandle* handle,const vec3 pos,const vec3 rotations,const float scale)
+{
+	mat4 model = { 0 };
+	identity(&model);
+	translate_mat4(&model, &model, pos);
+
+
+
+	//rotate_mat4(&model, &model, axis,/*(float)glfwGetTime()*/1 * deg_to_rad(i * 10));
+	//glUniformMatrix4fv(modelLOC, 1, GL_FALSE, (GLfloat*)model.mat);
+	//glDrawArrays(GL_TRIANGLES, 0, 36);
 }

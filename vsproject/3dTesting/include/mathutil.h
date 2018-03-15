@@ -260,6 +260,42 @@ static inline void create_lookat_mat4(mat4* Result,const vec3* eye,const vec3* t
 	//create_translation_matrix(&trans, p);	
 	//mult_mat4(Result, Result, &trans);
 }
+static inline void rotate_mat4_X(mat4* m,float angle)
+{
+	if (angle == 0) return;
+	float s = sinf(angle);
+	float c = cosf(angle);
 
+	mat4 r =
+	{
+		1.f, 0.f, 0.f, 0.f,
+		 0.f,   c,   s, 0.f ,
+		0.f,  -s,   c, 0.f ,
+		0.f, 0.f, 0.f, 1.f 
+	};
+
+	mult_mat4(m, m, &r);
+}
+static inline void rotate_mat4_Y(mat4* m, float angle)
+{
+	if (angle == 0) return;
+	float s = sinf(angle);
+	float c = cosf(angle);
+	mat4 r =
+	{
+		 c, 0.f,   s, 0.f ,
+		 0.f, 1.f, 0.f, 0.f ,
+		 -s, 0.f,   c, 0.f ,
+		 0.f, 0.f, 0.f, 1.f
+	};
+	mult_mat4(m, m, &r);
+}
+static inline void rotate_mat4_Z(mat4* m, float angle)
+{
+	float s = sinf(angle);
+	float c = cosf(angle);
+
+
+}
 #undef MATH_IMPLEMENTATION
 #endif // MATH_IMPLEMENTATION

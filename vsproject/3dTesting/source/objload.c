@@ -1,11 +1,18 @@
 #include <string.h>
 
 #define MAX_VER_AMOUNT 50000
+
+typedef struct
+{
+	vec3*	vertexbuffer;
+	vec3	normalbuffer;
+} ModelHandle;
+
 void load_model(int model,vec3** outVertBuffer, int* vertsize)
 {
 	int size = 0;
 	//char* mod = load_file_from_source(model_file_names[model],&size);
-	FILE* file = fopen(/*model_file_names[model]*/"models/teapot.obj", "r");
+	FILE* file = fopen(/*model_file_names[model]*/ "models/teapot.obj", "r");
 	assert(file);
 	char buff[255];
 
@@ -17,6 +24,7 @@ void load_model(int model,vec3** outVertBuffer, int* vertsize)
 	int* IndexBuffer = malloc(sizeof(int) * MAX_VER_AMOUNT);
 	int	indexBufferSize = 0;
 	int line = 1;
+
 	while (end != EOF)
 	{
 		if (!strcmp("v", buff))
