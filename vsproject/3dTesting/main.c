@@ -557,7 +557,7 @@ int main()
 	mat4_mult_vec4(&res, &root, &pooint);
 	
 
-	rotate_mat4_X()
+//	rotate_mat4_X()
 
 	/*unsigned char* kkkkkkk = NULL;
 	kkkkkkk = "hei";
