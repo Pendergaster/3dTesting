@@ -272,6 +272,7 @@ void link_shader(ShaderHandle* shader,uint vert,uint frag)
 
 #define MODEL_FILES(FILE) \
 		FILE(none)		\
+		FILE(teapot)		\
 
 #define GENERATE_ENUM(ENUM) ENUM,
 
@@ -496,6 +497,8 @@ typedef struct
 		-0.5f,  0.5f, -0.5f,
 	};
 
+vec3* teapotverts = NULL;
+int teapotsize = 0;
 void init_light(Light* l)
 {
 
@@ -517,6 +520,9 @@ void init_light(Light* l)
 	use_shader(&l->shader);
 	unuse_shader(&l->shader);
 
+
+	load_model(teapot, &teapotverts, &teapotsize);
+
 	glBindVertexArray(0);
 	glGenVertexArrays(1, &l->vao);
 	glBindVertexArray(l->vao);
@@ -527,8 +533,8 @@ void init_light(Light* l)
 
 
 	glBindBuffer(GL_ARRAY_BUFFER, l->vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(verticesBOX), NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(verticesBOX), verticesBOX);
+	glBufferData(GL_ARRAY_BUFFER, /*sizeof(verticesBOX)*/sizeof(vec3)*teapotsize, NULL, GL_STATIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, /*sizeof(verticesBOX)*/sizeof(vec3)*teapotsize, /*verticesBOX*/teapotverts);
 
 
 	// we only need to bind to the VBO, the container's VBO's data already contains the correct data.
@@ -935,8 +941,8 @@ int main()
 		unuse_shader(&shader);
 #endif
 		glBindBuffer(GL_ARRAY_BUFFER, light.vbo);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(verticesBOX), NULL, GL_STATIC_DRAW);
-		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(verticesBOX), verticesBOX);
+		glBufferData(GL_ARRAY_BUFFER,/* sizeof(verticesBOX)*/teapotsize * sizeof(vec3), NULL, GL_STATIC_DRAW);
+		glBufferSubData(GL_ARRAY_BUFFER, 0,/* sizeof(verticesBOX)*/teapotsize * sizeof(vec3), teapotverts);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 		use_shader(&light.shader);
@@ -955,7 +961,7 @@ int main()
 		glBindVertexArray(light.vao);
 		glCheckError();
 
-		glDrawArrays(GL_TRIANGLES, 0, 36);
+		glDrawArrays(GL_TRIANGLES, 0, teapotsize);
 		glBindVertexArray(0);
 
 		unuse_shader(&light.shader);
