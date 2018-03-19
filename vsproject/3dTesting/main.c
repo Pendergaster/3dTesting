@@ -33,6 +33,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
 	glViewport(0, 0, width, height);
 }
+
 float fov = 45.f;
 float fovSens = 1.5f;
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
@@ -123,140 +124,15 @@ void update_keys()
 	in.lastMousepos = in.mousepos;
 }
 
-
-
-typedef struct
-{
-	
-	uint	progId;
-	int		numAttribs;
-} ShaderHandle;
-
-uint compile_shader(uint glenum,const char* source)
-{
-	uint compilecheck = 0;
-	uint shader = glCreateShader(glenum);
-	if(shader == 0) FATALERROR;
-
-	glShaderSource(shader, 1, &source, NULL);
-	glCompileShader(shader);
-
-	glGetShaderiv(shader, GL_COMPILE_STATUS, &compilecheck);
-
-	if(!compilecheck)
-	{
-		uint infolen = 0;
-		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infolen);
-		if(infolen > 1)
-		{
-			char* infoLog = malloc(sizeof(char) * infolen);
-			glGetShaderInfoLog(shader, infolen, NULL, infoLog);
-			printf("Error compiling shader :\n%s\n", infoLog);
-			free(infoLog);
-		}
-		glDeleteShader(shader);
-		FATALERROR;
-	}
-	return shader;
-}
-void dispose_shader(ShaderHandle* sha)
-{
-	if (sha->progId)glDeleteProgram(sha->progId);
-}
-void unuse_shader(const ShaderHandle* sha)
-{
-	glUseProgram(0);
-	for (int i = 0; i < sha->numAttribs; i++) {
-		glDisableVertexAttribArray(i);
-	}
-}
-void add_attribute(ShaderHandle* shader,const char* name)
-{
-	printf("Adding attribute %s to program %d \n", name, shader->progId);
-	glBindAttribLocation(shader->progId, shader->numAttribs++, name);
-}
-void set_uniform_int(const ShaderHandle* shader,const char* name,int value)
-{
-	glUniform1i(glGetUniformLocation(shader->progId, name), value);
-}
-void set_uniform_float(const ShaderHandle* shader, const char* name, float value)
-{
-	glUniform1f(glGetUniformLocation(shader->progId, name), value);
-}
-void set_mat4(const ShaderHandle* sha,const char* name,float* mat)
-{
-	int vertexLocation = glGetUniformLocation(sha->progId, name);
-	if (vertexLocation == GL_INVALID_INDEX)
-	{
-		FATALERROR;
-	}
-	glUniformMatrix4fv(vertexLocation, 1, GL_FALSE, (GLfloat*)mat);
-}
-void set_vec3(const ShaderHandle* sha, const char* name,const vec3* vec)
-{
-	int vertexLocation = glGetUniformLocation(sha->progId, name);
-	if (vertexLocation == GL_INVALID_INDEX)
-	{
-		FATALERROR;
-	}
-	glUniform3f(vertexLocation, vec->x, vec->y, vec->z);
-}
-
-
-uint get_uniform_location(ShaderHandle* shader,const char* name)
-{
-	GLint location = glGetUniformLocation(shader->progId, name);
-	if (location == GL_INVALID_INDEX)
-	{
-		printf("failed to get uniform");
-		FATALERROR;
-	}
-	return location;
-}
-
-
-
-void use_shader(const ShaderHandle* shader)
-{
-	glUseProgram(shader->progId);
-	for (int i = 0; i < shader->numAttribs; i++) {
-		glEnableVertexAttribArray(i);
-	}
-}
-
-void link_shader(ShaderHandle* shader,uint vert,uint frag)
-{
-	printf("Linking program %d\n", shader->progId);
-	//shader->progId = glCreateProgram();
-	glLinkProgram(shader->progId);
-	uint linked = 0;
-	glGetProgramiv(shader->progId, GL_LINK_STATUS, &linked);
-
-	if(!linked)
-	{
-		uint infolen = 0;
-		glGetProgramiv(shader->progId, GL_INFO_LOG_LENGTH, &infolen);
-		if(infolen > 1)
-		{
-			char* infolog = malloc(sizeof(char)*infolen);
-			glGetProgramInfoLog(shader->progId, infolen, NULL, infolog);
-			printf("Error linking program \n %s", infolog);
-			free(infolog);
-		}
-		glDeleteProgram(shader->progId);
-		FATALERROR;
-	}
-
-	glDeleteShader(vert);
-	glDeleteShader(frag);
-}
-
+#include "source/shaderutils.c"
 
 #define SHADER_FILES(FILE)\
 		FILE(vert_sha) \
 		FILE(frag_sha) \
 		FILE(light_vert)\
 		FILE(light_frag)\
+		FILE(model_frag)\
+		FILE(model_vert)\
 
 
 #define TXT_FILES(FILE) \
@@ -273,6 +149,7 @@ void link_shader(ShaderHandle* shader,uint vert,uint frag)
 #define MODEL_FILES(FILE) \
 		FILE(none)		\
 		FILE(teapot)		\
+		FILE(teapotnormal)		\
 
 #define GENERATE_ENUM(ENUM) ENUM,
 
@@ -303,6 +180,7 @@ static const char* model_file_names[] = {
 enum model_files
 {
 	MODEL_FILES(GENERATE_ENUM)
+	maxmodelfiles
 };
 
 enum txt_files
@@ -496,9 +374,7 @@ typedef struct
 		-0.5f,  0.5f,  0.5f,
 		-0.5f,  0.5f, -0.5f,
 	};
-
-vec3* teapotverts = NULL;
-int teapotsize = 0;
+ModelHandle TeaPot;
 void init_light(Light* l)
 {
 
@@ -521,7 +397,7 @@ void init_light(Light* l)
 	unuse_shader(&l->shader);
 
 
-	load_model(teapot, &teapotverts, &teapotsize);
+	TeaPot = load_model(teapot);
 
 	glBindVertexArray(0);
 	glGenVertexArrays(1, &l->vao);
@@ -533,8 +409,8 @@ void init_light(Light* l)
 
 
 	glBindBuffer(GL_ARRAY_BUFFER, l->vbo);
-	glBufferData(GL_ARRAY_BUFFER, /*sizeof(verticesBOX)*/sizeof(vec3)*teapotsize, NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, /*sizeof(verticesBOX)*/sizeof(vec3)*teapotsize, /*verticesBOX*/teapotverts);
+	glBufferData(GL_ARRAY_BUFFER, /*sizeof(verticesBOX)*/sizeof(vec3)*TeaPot.vertexsize, NULL, GL_STATIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, /*sizeof(verticesBOX)*/sizeof(vec3)*TeaPot.vertexsize, /*verticesBOX*/TeaPot.vertexbuffer);
 
 
 	// we only need to bind to the VBO, the container's VBO's data already contains the correct data.
@@ -545,18 +421,70 @@ void init_light(Light* l)
 	glBindVertexArray(0);
 
 }
-void render_model(ModelHandle* handle,vec3 pos,vec3 rotations,float scale);
+float vertices[] = {
+	-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,	    0.0f,  0.0f, -1.0f,
+	0.5f, -0.5f, -0.5f,  1.0f, 0.0f,	    0.0f,  0.0f, -1.0f,
+	0.5f,  0.5f, -0.5f,  1.0f, 1.0f,	    0.0f,  0.0f, -1.0f,
+	0.5f,  0.5f, -0.5f,  1.0f, 1.0f,	    0.0f,  0.0f, -1.0f,
+	-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,	    0.0f,  0.0f, -1.0f,
+	-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,	    0.0f,  0.0f, -1.0f,
+
+	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,		0.0f,  0.0f, 1.0f,
+	0.5f, -0.5f,  0.5f,  1.0f, 0.0f,		0.0f,  0.0f, 1.0f,
+	0.5f,  0.5f,  0.5f,  1.0f, 1.0f,		0.0f,  0.0f, 1.0f,
+	0.5f,  0.5f,  0.5f,  1.0f, 1.0f,		0.0f,  0.0f, 1.0f,
+	-0.5f,  0.5f,  0.5f,  0.0f, 1.0f,		0.0f,  0.0f, 1.0f,
+	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,		0.0f,  0.0f, 1.0f,
+
+	-0.5f,  0.5f,  0.5f,  1.0f, 0.0f,		  -1.0f,  0.0f,  0.0f,
+	-0.5f,  0.5f, -0.5f,  1.0f, 1.0f,		  -1.0f,  0.0f,  0.0f,
+	-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,		  -1.0f,  0.0f,  0.0f,
+	-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,		  -1.0f,  0.0f,  0.0f,
+	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,		  -1.0f,  0.0f,  0.0f,
+	-0.5f,  0.5f,  0.5f,  1.0f, 0.0f,		  -1.0f,  0.0f,  0.0f,
+
+	0.5f,  0.5f,  0.5f,  1.0f, 0.0f,		 1.0f,  0.0f,  0.0f,
+	0.5f,  0.5f, -0.5f,  1.0f, 1.0f,		 1.0f,  0.0f,  0.0f,
+	0.5f, -0.5f, -0.5f,  0.0f, 1.0f,		 1.0f,  0.0f,  0.0f,
+	0.5f, -0.5f, -0.5f,  0.0f, 1.0f,		 1.0f,  0.0f,  0.0f,
+	0.5f, -0.5f,  0.5f,  0.0f, 0.0f,		 1.0f,  0.0f,  0.0f,
+	0.5f,  0.5f,  0.5f,  1.0f, 0.0f,		 1.0f,  0.0f,  0.0f,
+
+	-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,		  0.0f, -1.0f,  0.0f,
+	0.5f, -0.5f, -0.5f,  1.0f, 1.0f,		  0.0f, -1.0f,  0.0f,
+	0.5f, -0.5f,  0.5f,  1.0f, 0.0f,		  0.0f, -1.0f,  0.0f,
+	0.5f, -0.5f,  0.5f,  1.0f, 0.0f,		  0.0f, -1.0f,  0.0f,
+	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,		  0.0f, -1.0f,  0.0f,
+	-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,		  0.0f, -1.0f,  0.0f,
+
+	-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,		  0.0f,  1.0f,  0.0f,
+	0.5f,  0.5f, -0.5f,  1.0f, 1.0f,		  0.0f,  1.0f,  0.0f,
+	0.5f,  0.5f,  0.5f,  1.0f, 0.0f,		  0.0f,  1.0f,  0.0f,
+	0.5f,  0.5f,  0.5f,  1.0f, 0.0f,		  0.0f,  1.0f,  0.0f,
+	-0.5f,  0.5f,  0.5f,  0.0f, 0.0f,		  0.0f,  1.0f,  0.0f,
+	-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,		  0.0f,  1.0f,  0.0f,
+};
+inline void render_model(ModelHandle* handle,vec3 pos,vec3 rotations,float scale, int modelLOC);
+inline void render_boxes(ShaderHandle* handle, uint VBO, uint VAO, uint projectionLOC, uint modelLoc, uint viewLOC, vec3 lightpos, Camera* camera, mat4* projection);
+inline void render_light(Light light, Camera* camera, mat4* projection, vec3 lightpos);
+
 int main()
 {
 
 	mat4 root = { 0 };
 	vec3 aaxis = { 0,1,0 };
-	vec4 pooint = { 1,0,0,1};
+	vec4 pooint = { 0,1,0,1};
+
 	create_rotate_mat4(&root, aaxis, deg_to_rad(90.f));
 	vec4 res = { 0 };
 	mat4_mult_vec4(&res, &root, &pooint);
 	
-
+	identity(&root);
+	rotate_mat4_X(&root, deg_to_rad(90.f));
+	vec4 pooint1 = { 0,1,0,1 };
+	vec4 res2 = { 0 };
+	mat4_mult_vec4(&res2, &root,&pooint1);
+	int a = 0;
 //	rotate_mat4_X()
 
 	/*unsigned char* kkkkkkk = NULL;
@@ -603,20 +531,6 @@ int main()
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	init_keys();
 
-	/*mat4 t = identity();
-	mat4 b = identity();
-	for(int jj = 0; jj < 4;jj++)
-	{
-		b.mat[0][jj] = 1;
-		b.mat[1][jj] = 2;
-		b.mat[2][jj] = 3;
-		b.mat[3][jj] = 4;
-	}
-	mat4 mul = mult_mat4(&b, &b);
-
-
-	mat4 ortho = orthomat(0.f,800.f,0.f,600.f,0.1f,100.f);*/
-	//	mat4 proj = perspective(deg_to_rad(45.f), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 100.f);
 #define reee
 #ifdef reee
 
@@ -635,68 +549,13 @@ int main()
 
 	add_attribute(&shader, "vertexPosition");
 	add_attribute(&shader, "uv");
+	add_attribute(&shader, "normal");
+
 
 	link_shader(&shader, vertID, fragID);
 
 	use_shader(&shader);
 	unuse_shader(&shader);
-
-
-	//float vertices[] = {
-	//	// positions          // texture coords
-	//	0.5f,  0.5f, 0.0f,   1.0f, 1.0f, // top right
-	//	0.5f, -0.5f, 0.0f,   1.0f, 0.0f, // bottom right
-	//	-0.5f, -0.5f, 0.0f,   0.0f, 0.0f, // bottom left
-	//	-0.5f,  0.5f, 0.0f,   0.0f, 1.0f  // top left 
-	//};
-	//uint indices[] = {
-	//	0, 1, 3, // first triangle
-	//	1, 2, 3  // second triangle
-	//};
-	float vertices[] = {
-		-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,	    0.0f,  0.0f, -1.0f,
-		0.5f, -0.5f, -0.5f,  1.0f, 0.0f,	    0.0f,  0.0f, -1.0f,
-		0.5f,  0.5f, -0.5f,  1.0f, 1.0f,	    0.0f,  0.0f, -1.0f,
-		0.5f,  0.5f, -0.5f,  1.0f, 1.0f,	    0.0f,  0.0f, -1.0f,
-		-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,	    0.0f,  0.0f, -1.0f,
-		-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,	    0.0f,  0.0f, -1.0f,
-
-		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,		0.0f,  0.0f, 1.0f,
-		0.5f, -0.5f,  0.5f,  1.0f, 0.0f,		0.0f,  0.0f, 1.0f,
-		0.5f,  0.5f,  0.5f,  1.0f, 1.0f,		0.0f,  0.0f, 1.0f,
-		0.5f,  0.5f,  0.5f,  1.0f, 1.0f,		0.0f,  0.0f, 1.0f,
-		-0.5f,  0.5f,  0.5f,  0.0f, 1.0f,		0.0f,  0.0f, 1.0f,
-		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,		0.0f,  0.0f, 1.0f,
-
-		-0.5f,  0.5f,  0.5f,  1.0f, 0.0f,		  -1.0f,  0.0f,  0.0f,
-		-0.5f,  0.5f, -0.5f,  1.0f, 1.0f,		  -1.0f,  0.0f,  0.0f,
-		-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,		  -1.0f,  0.0f,  0.0f,
-		-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,		  -1.0f,  0.0f,  0.0f,
-		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,		  -1.0f,  0.0f,  0.0f,
-		-0.5f,  0.5f,  0.5f,  1.0f, 0.0f,		  -1.0f,  0.0f,  0.0f,
-
-		0.5f,  0.5f,  0.5f,  1.0f, 0.0f,		 1.0f,  0.0f,  0.0f,
-		0.5f,  0.5f, -0.5f,  1.0f, 1.0f,		 1.0f,  0.0f,  0.0f,
-		0.5f, -0.5f, -0.5f,  0.0f, 1.0f,		 1.0f,  0.0f,  0.0f,
-		0.5f, -0.5f, -0.5f,  0.0f, 1.0f,		 1.0f,  0.0f,  0.0f,
-		0.5f, -0.5f,  0.5f,  0.0f, 0.0f,		 1.0f,  0.0f,  0.0f,
-		0.5f,  0.5f,  0.5f,  1.0f, 0.0f,		 1.0f,  0.0f,  0.0f,
-
-		-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,		  0.0f, -1.0f,  0.0f,
-		0.5f, -0.5f, -0.5f,  1.0f, 1.0f,		  0.0f, -1.0f,  0.0f,
-		0.5f, -0.5f,  0.5f,  1.0f, 0.0f,		  0.0f, -1.0f,  0.0f,
-		0.5f, -0.5f,  0.5f,  1.0f, 0.0f,		  0.0f, -1.0f,  0.0f,
-		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,		  0.0f, -1.0f,  0.0f,
-		-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,		  0.0f, -1.0f,  0.0f,
-
-		-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,		  0.0f,  1.0f,  0.0f,
-		0.5f,  0.5f, -0.5f,  1.0f, 1.0f,		  0.0f,  1.0f,  0.0f,
-		0.5f,  0.5f,  0.5f,  1.0f, 0.0f,		  0.0f,  1.0f,  0.0f,
-		0.5f,  0.5f,  0.5f,  1.0f, 0.0f,		  0.0f,  1.0f,  0.0f,
-		-0.5f,  0.5f,  0.5f,  0.0f, 0.0f,		  0.0f,  1.0f,  0.0f,
-		-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,		  0.0f,  1.0f,  0.0f,
-	};
-
 
 
 	uint VBO, VAO/*, EBO;*/;
@@ -751,12 +610,12 @@ int main()
 	
 
 
-	mat4 model = { 0 };
-	identity(&model);
-	vec3 axis = { 1.f,0.f,0.f };
-	vec3 cubePos = { 3.f, 2.f , 0.f };
-	translate_mat4(&model, &model, cubePos);
-	rotate_mat4(&model, &model, axis, deg_to_rad(-55.f));
+	//mat4 model = { 0 };
+	//identity(&model);
+	//vec3 axis = { 1.f,0.f,0.f };
+	//vec3 cubePos = { 3.f, 2.f , 0.f };
+	//translate_mat4(&model, &model, cubePos);
+	//rotate_mat4(&model, &model, axis, deg_to_rad(-55.f));
 
 	mat4 view = { 0 };
 	identity(&view);
@@ -776,10 +635,10 @@ int main()
 
 	glCheckError();
 
-
+/*
 	glUniformMatrix4fv(modelLOC, 1, GL_FALSE, (GLfloat*)model.mat);
 	glUniformMatrix4fv(viewLOC, 1, GL_FALSE, (GLfloat*)view.mat);
-	glUniformMatrix4fv(projectionLOC, 1, GL_FALSE, (GLfloat*)projection.mat);
+	glUniformMatrix4fv(projectionLOC, 1, GL_FALSE, (GLfloat*)projection.mat)*/;
 
 	
 	glCheckError();
@@ -809,13 +668,36 @@ int main()
 	create_rotate_mat4(&lampRotater, lampAxis, deg_to_rad(1.f));
 	vec3 oldLightPos = { 0.f , 0.f , -2.f };
 
-	vec3 cubepositions[5] = {
-		{ 0.f, 0.f , 0.f},
-		{3.f, 0.f , -3.f},
-		{3.f, 2.f , 0.f},
-		{2.f, 2.f , 2.f},
-		{3.f, 5.f , -2.f}
-	};
+	
+	ModelHandle TeaPotNormal = load_model(teapotnormal);
+
+
+
+
+	{
+	
+		ShaderHandle modelnormalshader = { 0 };
+		char* vert_sModel = load_file(model_vert, NULL);
+		uint vertIDModel = compile_shader(GL_VERTEX_SHADER, vert_sModel);
+		free(vert_sModel);
+
+		char* frag_sModel = load_file(model_frag, NULL);
+		uint fragIDModel = compile_shader(GL_FRAGMENT_SHADER, frag_sModel);
+		free(frag_sModel);
+		modelnormalshader.progId = glCreateProgram();
+		glAttachShader(modelnormalshader.progId, vertIDModel);
+		glAttachShader(modelnormalshader.progId, fragIDModel);
+
+		add_attribute(&modelnormalshader, "vertexPosition");
+		add_attribute(&modelnormalshader, "normal");
+
+		link_shader(&modelnormalshader, vertID, fragID);
+
+		use_shader(&modelnormalshader);
+		unuse_shader(&modelnormalshader);
+	
+	}
+
 
 	while (!glfwWindowShouldClose(window))
 	{
@@ -857,123 +739,21 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
-		identity(&model);
-
-		axis.y = 0.5f;
+		
 #ifdef reee
-		glBindBuffer(GL_ARRAY_BUFFER, VBO);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), NULL, GL_STATIC_DRAW);
-		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		use_shader(&shader);
-
-
 		vec4 tempL = { oldLightPos.x,oldLightPos.y,oldLightPos.z,1.f };
 		vec4 resL = { 0 };
 		mat4_mult_vec4(&resL, &lampRotater, &tempL);
 		vec3 newlightPos = { resL.x,resL.y,resL.z };
 
 		oldLightPos = newlightPos;
-		vec3 objcolor = { 1.f,1.0f,1.0f };
-		vec3 lightcolor = { 1.f,1.f,1.f };
-		//set_vec3(&shader, "ObjColor", &objcolor);
-		/*set_vec3(&shader, "LightColor", &lightcolor);
-		set_vec3(&shader, "LightPos", &newlightPos);*/
-		set_vec3(&shader, "ViewPos", &camera.cameraPos);
-		typedef struct
-		{
-			vec3 ambient;
-			vec3 diffuse;
-			vec3 specular;
-			float shininess;
-		} Material;
 
-		Material cube = { 0 };
-		vec3 amb = { 0.9f, 0.9f, 0.9f };
-		vec3 diff = { 0.9f, 0.9f, 0.9f };
-		vec3 spec = { 0.9f, 0.9f, 0.9f };
-		float shine = 12.0f;
-		cube.ambient = amb;
-		cube.diffuse = diff;
-		cube.specular = spec;
-		cube.shininess = shine;
-		//set_vec3(&shader, "material.ambient", &cube.ambient);
-		//set_vec3(&shader, "material.diffuse", &cube.diffuse);
-		set_vec3(&shader, "material.specular", &cube.diffuse);
-		set_uniform_float(&shader, "material.shininess", cube.shininess);
-
-		typedef struct
-		{
-			vec3 position;
-			vec3 ambient;
-			vec3 diffuse;
-			vec3 specular;
-		} LightP;
-
-		LightP pro = { 0 };
-		pro.position = newlightPos;
-		vec3 ambL = { 0.7f, 0.7f, 0.7f };
-		vec3 diffL = { 0.5f, 0.5f, 0.5f };
-		vec3 specL = { 1.0f, 1.0f, 1.0f };
-		pro.ambient = ambL;
-		pro.diffuse = diffL;
-		pro.specular = specL;
-		
-		vec3 ldir = { -0.2f, -1.0f, -0.3f };
-		//set_vec3(&shader, "light.direction", &ldir);
-		set_vec3(&shader, "light.position", &newlightPos);
-		set_vec3(&shader, "light.ambient", &pro.ambient);
-		set_vec3(&shader, "light.diffuse", &pro.diffuse);
-		set_vec3(&shader, "light.specular", &pro.diffuse);
-
-		set_uniform_float(&shader, "light.constant", 1.0f);
-		set_uniform_float(&shader, "light.linear", 0.1f);
-		set_uniform_float(&shader, "light.quadratic", 0.032f);
-
-		glUniformMatrix4fv(viewLOC, 1, GL_FALSE, (GLfloat*)camera.view.mat);
-
-		perspective(&projection, deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 100.f);
-		glUniformMatrix4fv(projectionLOC, 1, GL_FALSE, (GLfloat*)projection.mat);
-		glBindVertexArray(VAO);
-
-		for(int i = 0; i < 5;i++)
-		{
-			translate_mat4(&model, &model, cubepositions[i]);
-			rotate_mat4(&model, &model, axis,/*(float)glfwGetTime()*/1 * deg_to_rad(i * 10));
-			glUniformMatrix4fv(modelLOC, 1, GL_FALSE, (GLfloat*)model.mat);
-			glDrawArrays(GL_TRIANGLES, 0, 36);
-		}
-
-		glBindVertexArray(0);
-
-		unuse_shader(&shader);
+		render_boxes(&shader, VBO,VAO,projectionLOC,modelLOC,viewLOC,oldLightPos,&camera,&projection);
 #endif
-		glBindBuffer(GL_ARRAY_BUFFER, light.vbo);
-		glBufferData(GL_ARRAY_BUFFER,/* sizeof(verticesBOX)*/teapotsize * sizeof(vec3), NULL, GL_STATIC_DRAW);
-		glBufferSubData(GL_ARRAY_BUFFER, 0,/* sizeof(verticesBOX)*/teapotsize * sizeof(vec3), teapotverts);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		render_light(light, &camera, &projection, newlightPos);
 
-		use_shader(&light.shader);
-		identity(&model);
-		//translate_mat4(&model, &model, cubepositions[0]);
 
-		set_mat4(&light.shader, "model",model.mat);
-		set_mat4(&light.shader, "view",camera.view.mat);
-		set_mat4(&light.shader, "projection",projection.mat);
-		//vec3 objColor = { 1.f,1.f,1.f };
-		vec3 lightColor = { 1.f,1.f,1.f };
-		//set_vec3(&light.shader, "objectColor", &objColor);
-		set_vec3(&light.shader, "lightColor", &lightColor);
-		set_vec3(&light.shader, "pos", &newlightPos);
-
-		glBindVertexArray(light.vao);
-		glCheckError();
-
-		glDrawArrays(GL_TRIANGLES, 0, teapotsize);
-		glBindVertexArray(0);
-
-		unuse_shader(&light.shader);
-
+		printf("%.2f %.2f %.2f \n", camera.cameraPos.x, camera.cameraPos.y, camera.cameraPos.z);
 		//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 		glCheckError();
@@ -989,20 +769,247 @@ int main()
 		update_keys();
 		glfwSwapBuffers(window);
 	}
-
+	dispose_model_memory();
 	dipose_inputs();
 	glfwTerminate();
 	return 1;
 }
-void render_model(ModelHandle* handle,const vec3 pos,const vec3 rotations,const float scale)
+
+vec3 cubepositions[5] = {
+	{ 0.f, 0.f , 0.f },
+	{ 3.f, 0.f , 0.f },
+	{ 6.f, 0.f , 0.f },
+	{ 8.f, 0.f , 0.f },
+	{ 10.f, 0.f , 0.f }
+};
+
+inline void render_boxes(ShaderHandle* handle,uint VBO,uint VAO,uint projectionLOC,uint modelLoc,uint viewLOC,vec3 lightpos,Camera* camera,mat4* projection)
+{
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), NULL, GL_STATIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	use_shader(handle);
+
+
+
+	vec3 objcolor = { 1.f,1.0f,1.0f };
+	vec3 lightcolor = { 1.f,1.f,1.f };
+
+
+	set_vec3(handle, "ViewPos", &camera->cameraPos);
+	typedef struct
+	{
+		vec3 ambient;
+		vec3 diffuse;
+		vec3 specular;
+		float shininess;
+	} Material;
+
+	Material cube = { 0 };
+	vec3 amb = { 0.9f, 0.9f, 0.9f };
+	vec3 diff = { 0.9f, 0.9f, 0.9f };
+	vec3 spec = { 0.9f, 0.9f, 0.9f };
+	float shine = 12.0f;
+	cube.ambient = amb;
+	cube.diffuse = diff;
+	cube.specular = spec;
+	cube.shininess = shine;
+	//set_vec3(&shader, "material.ambient", &cube.ambient);
+	//set_vec3(&shader, "material.diffuse", &cube.diffuse);
+	set_vec3(handle, "material.specular", &cube.diffuse);
+	set_uniform_float(handle, "material.shininess", cube.shininess);
+
+	typedef struct
+	{
+		vec3 position;
+		vec3 ambient;
+		vec3 diffuse;
+		vec3 specular;
+	} LightP;
+
+	LightP pro = { 0 };
+	pro.position = lightpos;
+	vec3 ambL = { 0.7f, 0.7f, 0.7f };
+	vec3 diffL = { 0.5f, 0.5f, 0.5f };
+	vec3 specL = { 1.0f, 1.0f, 1.0f };
+	pro.ambient = ambL;
+	pro.diffuse = diffL;
+	pro.specular = specL;
+
+	vec3 ldir = { -0.2f, -1.0f, -0.3f };
+	//set_vec3(&shader, "light.direction", &ldir);
+	set_vec3(handle, "light.position", &lightpos);
+	set_vec3(handle, "light.ambient", &pro.ambient);
+	set_vec3(handle, "light.diffuse", &pro.diffuse);
+	set_vec3(handle, "light.specular", &pro.diffuse);
+
+	set_uniform_float(handle, "light.constant", 1.0f);
+	set_uniform_float(handle, "light.linear", 0.1f);
+	set_uniform_float(handle, "light.quadratic", 0.032f);
+
+	glUniformMatrix4fv(viewLOC, 1, GL_FALSE, (GLfloat*)camera->view.mat);
+
+	perspective(projection, deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 100.f);
+	glUniformMatrix4fv(projectionLOC, 1, GL_FALSE, (GLfloat*)projection->mat);
+	glBindVertexArray(VAO);
+
+	mat4 model = { 0 };
+	identity(&model);
+	vec3 axis = { 1.f,0.f,0.f };
+	for (int i = 0; i < 5; i++)
+	{
+		/*vec3 Rotation = { i * 10, i * 5 , i * 20 };
+		render_model(&TeaPot, cubepositions[i], Rotation, 0.5f, modelLOC)*/;
+		translate_mat4(&model, &model, cubepositions[i]);
+		rotate_mat4(&model, &model, axis,/*(float)glfwGetTime()*/1 * deg_to_rad(0));
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, (GLfloat*)model.mat);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+	}
+
+	glBindVertexArray(0);
+
+	unuse_shader(handle);
+}
+inline void render_light(Light light,Camera* camera,mat4* projection,vec3 lightpos)
+{
+	glBindBuffer(GL_ARRAY_BUFFER, light.vbo);
+	glBufferData(GL_ARRAY_BUFFER,/* sizeof(verticesBOX)*/sizeof(vec3) * TeaPot.vertexsize, NULL, GL_STATIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0,/* sizeof(verticesBOX)*/TeaPot.vertexsize * sizeof(vec3), TeaPot.vertexbuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	use_shader(&light.shader);
+
+	set_mat4(&light.shader, "view", camera->view.mat);
+	set_mat4(&light.shader, "projection", projection->mat);
+	vec3 lightColor = { 1.f,1.f,1.f };
+	set_vec3(&light.shader, "lightColor", &lightColor);
+
+	glBindVertexArray(light.vao);
+	glCheckError();
+	static float x = 0;
+	x += 0.1f;
+	static float y = 0;
+	y += 0.1f;
+	vec3 rotations = { 0,0,x };
+	vec3 npooos = { 0 };
+	render_model(&TeaPot, lightpos, rotations, 0.2, glGetUniformLocation(light.shader.progId, "model"));
+	glBindVertexArray(0);
+
+	unuse_shader(&light.shader);
+}
+vec3 modelNormLocsTEMP[4] =
+{
+	{ 0.f, 0.f, 1.f},
+	{ 0.f, 0.f, 3.f},
+	{ 0.f, 0.f, 6.f},
+	{ 0.f, 0.f, 7.f},
+};
+inline void render_model_normals(uint VBO,uint normalbuffer,ShaderHandle* handle,ModelHandle* model,Camera* camera,vec3 lightpos,uint viewLOC,uint projectionLOC,uint modelLoc,uint VAO,mat4* projection)
+{
+	//bind vertexes
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3)*model->vertexsize, NULL, GL_STATIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vec3)*model->vertexsize, model->vertexbuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	//bind normals
+	glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3)*model->vertexsize, NULL, GL_STATIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vec3)*model->vertexsize, model->normalbuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	use_shader(handle);
+
+
+
+	vec3 objcolor = { 1.f,1.0f,1.0f };
+	vec3 lightcolor = { 1.f,1.f,1.f };
+
+
+	set_vec3(handle, "ViewPos", &camera->cameraPos);
+	typedef struct
+	{
+		vec3 ambient;
+		vec3 diffuse;
+		vec3 specular;
+		float shininess;
+	} Material;
+
+	Material cube = { 0 };
+	vec3 amb = { 0.9f, 0.9f, 0.9f };
+	vec3 diff = { 0.9f, 0.9f, 0.9f };
+	vec3 spec = { 0.9f, 0.9f, 0.9f };
+	float shine = 12.0f;
+	cube.ambient = amb;
+	cube.diffuse = diff;
+	cube.specular = spec;
+	cube.shininess = shine;
+	//set_vec3(&shader, "material.ambient", &cube.ambient);
+	//set_vec3(&shader, "material.diffuse", &cube.diffuse);
+	set_vec3(handle, "material.specular", &cube.diffuse);
+	set_uniform_float(handle, "material.shininess", cube.shininess);
+
+	typedef struct
+	{
+		vec3 position;
+		vec3 ambient;
+		vec3 diffuse;
+		vec3 specular;
+	} LightP;
+
+	LightP pro = { 0 };
+	pro.position = lightpos;
+	vec3 ambL = { 0.7f, 0.7f, 0.7f };
+	vec3 diffL = { 0.5f, 0.5f, 0.5f };
+	vec3 specL = { 1.0f, 1.0f, 1.0f };
+	pro.ambient = ambL;
+	pro.diffuse = diffL;
+	pro.specular = specL;
+
+	vec3 ldir = { -0.2f, -1.0f, -0.3f };
+	//set_vec3(&shader, "light.direction", &ldir);
+	set_vec3(handle, "light.position", &lightpos);
+	set_vec3(handle, "light.ambient", &pro.ambient);
+	set_vec3(handle, "light.diffuse", &pro.diffuse);
+	set_vec3(handle, "light.specular", &pro.diffuse);
+
+	set_uniform_float(handle, "light.constant", 1.0f);
+	set_uniform_float(handle, "light.linear", 0.1f);
+	set_uniform_float(handle, "light.quadratic", 0.032f);
+
+	glUniformMatrix4fv(viewLOC, 1, GL_FALSE, (GLfloat*)camera->view.mat);
+
+	perspective(projection, deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 100.f);
+	glUniformMatrix4fv(projectionLOC, 1, GL_FALSE, (GLfloat*)projection->mat);
+	glBindVertexArray(VAO);
+
+
+
+	for (int i = 0; i < 4; i++)
+	{
+		vec3 Rotation = { 0, 0 ,0 };
+
+		render_model(model, modelNormLocsTEMP[i], Rotation, 0.5f, modelLoc);
+	}
+
+	glBindVertexArray(0);
+
+	unuse_shader(handle);
+}
+
+inline void render_model(const ModelHandle* handle,const vec3 pos,const vec3 rotations,const float scale,const int modelLOC)
 {
 	mat4 model = { 0 };
 	identity(&model);
 	translate_mat4(&model, &model, pos);
-
-
+	rotate_mat4_Z(&model, deg_to_rad(rotations.z));
+	rotate_mat4_Y(&model, deg_to_rad(rotations.y));
+	rotate_mat4_X(&model, deg_to_rad(rotations.x));
+	
+	scale_mat4(&model, scale);
 
 	//rotate_mat4(&model, &model, axis,/*(float)glfwGetTime()*/1 * deg_to_rad(i * 10));
-	//glUniformMatrix4fv(modelLOC, 1, GL_FALSE, (GLfloat*)model.mat);
-	//glDrawArrays(GL_TRIANGLES, 0, 36);
+	glUniformMatrix4fv(modelLOC, 1, GL_FALSE, (GLfloat*)model.mat);
+	glDrawArrays(GL_TRIANGLES, 0, handle->vertexsize);
 }

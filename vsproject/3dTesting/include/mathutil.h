@@ -292,10 +292,25 @@ static inline void rotate_mat4_Y(mat4* m, float angle)
 }
 static inline void rotate_mat4_Z(mat4* m, float angle)
 {
+	if (angle == 0) return;
 	float s = sinf(angle);
 	float c = cosf(angle);
-
+	mat4 r =
+	{
+		 c,   s, 0.f, 0.f ,
+		 -s,   c, 0.f, 0.f ,
+		 0.f, 0.f, 1.f, 0.f ,
+		 0.f, 0.f, 0.f, 1.f 
+	};
+	mult_mat4(m, m, &r);
+}
+static inline void scale_mat4(mat4* m,const float s)
+{
+	for (int x = 0; x < 3; x++)
+		for (int y = 0; y < 3; y++)
+			m->mat[x][y] *= s;
 
 }
+
 #undef MATH_IMPLEMENTATION
 #endif // MATH_IMPLEMENTATION
