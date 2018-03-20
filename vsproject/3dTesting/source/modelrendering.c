@@ -1,11 +1,52 @@
 
 vec3 cubepositions[5] = {
-	{ 0.f, 0.f , 0.f },
+{ 0.f, 0.f , 0.f },
 { 3.f, 0.f , 0.f },
 { 6.f, 0.f , 0.f },
 { 8.f, 0.f , 0.f },
 { 10.f, 0.f , 0.f }
 };
+
+typedef struct
+{
+	ShaderHandle	noTex;
+	ShaderHandle	withTex;
+	uint			VertBO;
+	uint			UvBO;
+	uint			NormBO;
+	//light stuff
+} Renderer;
+
+inline void init_renderer(Renderer *rend)
+{
+	ShaderHandle* shader = &rend->withTex;
+	char* vert_s = load_file(vert_sha, NULL);
+	uint vertID = compile_shader(GL_VERTEX_SHADER, vert_s);
+	free(vert_s);
+
+	char* frag_s = load_file(frag_sha, NULL);
+	uint fragID = compile_shader(GL_FRAGMENT_SHADER, frag_s);
+	free(frag_s);
+	shader->progId = glCreateProgram();
+	glAttachShader(shader->progId, vertID);
+	glAttachShader(shader->progId, fragID);
+
+	add_attribute(shader, "vertexPosition");
+	add_attribute(shader, "uv");
+	add_attribute(shader, "normal");
+
+
+	link_shader(shader, vertID, fragID);
+
+	use_shader(shader);
+	unuse_shader(shader);
+}
+
+inline void render(const ModelHandle* handle,const vec3 pos, const vec3 rotations, const float scale)
+{
+
+}
+
 
 inline void render_model(const ModelHandle* handle, const vec3 pos, const vec3 rotations, const float scale, const int modelLOC)
 {
