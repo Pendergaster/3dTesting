@@ -123,3 +123,46 @@ void link_shader(ShaderHandle* shader, uint vert, uint frag)
 	glDeleteShader(vert);
 	glDeleteShader(frag);
 }
+
+
+
+//ShaderHandle create_shader_stof(const int numAttribs,const int vertfile,const int fragfile ,...)
+//{
+//	ShaderHandle shader = { 0 };
+//	char* vert_s = load_file(vertfile, NULL);
+//	uint vertID = compile_shader(GL_VERTEX_SHADER, vert_s);
+//	free(vert_s);
+//
+//	char* frag_s = load_file(fragfile, NULL);
+//	uint fragID = compile_shader(GL_FRAGMENT_SHADER, frag_s);
+//	free(frag_s);
+//	shader.progId = glCreateProgram();
+//	glAttachShader(shader.progId, vertID);
+//	glAttachShader(shader.progId, fragID);
+//
+//
+//
+//	va_list args;
+//
+//
+//	va_start(args,numAttribs);
+//	
+//	char * s = va_arg(args, char *);
+//	/*puts(s);*/
+//	// vsnprintf(buffer, sizeof buffer, "%s", args);
+//	va_end(args);
+//	//FlushFunnyStream(buffer);
+//
+//
+//	for(uint i = 0; i <numAttribs;i++)
+//	{
+//		
+//		add_attribute(&shader, "ree");
+//	}
+//
+//	link_shader(&shader, vertID, fragID);
+//
+//	use_shader(&shader);
+//	unuse_shader(&shader);
+//	return shader;
+//}
