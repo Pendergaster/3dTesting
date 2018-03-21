@@ -112,7 +112,7 @@ ModelHandle load_model(const int model)
 	// create buffers
 	vec3* outVertBuffer = malloc(sizeof(vec3)*indexBufferSize + sizeof(vec3)*indexBufferSize + (hasTexCoords ? sizeof(vec2) * indexBufferSize : 0));
 	vec3* outNormalBuffer = outVertBuffer + indexBufferSize;
-	vec2* outTextCoordBuffer = (hasTexCoords ? outNormalBuffer + indexBufferSize : NULL);
+	vec2* outTextCoordBuffer = (vec2*)(hasTexCoords ? outNormalBuffer + indexBufferSize : NULL);
 	int vertsize = 0;
 	int uvsize = 0;
 	int normalsize = 0;
@@ -163,13 +163,10 @@ void dispose_model_memory()
 	free(vertexes);
 	for (int i = 0; i < maxmodelfiles; i++)
 	{
-		if (model_cache[i].normalbuffer != NULL)
-		{
-			free(model_cache[i].normalbuffer);
-		}
+		//vertex buffer on pää handle modelin muistiin, kaikki muu muisti on sen perässä
 		if (model_cache[i].vertexbuffer != NULL)
 		{
-			free(model_cache[i].vertexbuffer);
+			free(model_cache[i].normalbuffer);
 		}
 	}
 }

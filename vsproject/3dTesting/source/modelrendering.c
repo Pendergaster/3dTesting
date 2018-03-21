@@ -14,11 +14,20 @@ typedef struct
 	uint			VertBO;
 	uint			UvBO;
 	uint			NormBO;
+	uint			VaoTex;
+	uint			VaoNoTex;
+	uint			modelLOCtex;
+	uint			viewLOCtex;
+	uint			projectionLOCtex;
+	uint			modelLOCnoTex;
+	uint			viewLOCnoTex;
+	uint			projectionLOCnoTex;
 	//light stuff
 } Renderer;
 
 inline void init_renderer(Renderer *rend)
 {
+	/* with texture*/
 	ShaderHandle* shader = &rend->withTex;
 	char* vert_s = load_file(vert_sha, NULL);
 	uint vertID = compile_shader(GL_VERTEX_SHADER, vert_s);
@@ -40,16 +49,113 @@ inline void init_renderer(Renderer *rend)
 
 	use_shader(shader);
 	unuse_shader(shader);
+
+
+	/* no texture*/
+
+	shader = &rend->noTex;
+	vert_s = load_file(vert_sha, NULL);
+	vertID = compile_shader(GL_VERTEX_SHADER, vert_s);
+	free(vert_s);
+
+	frag_s = load_file(frag_sha, NULL);
+	fragID = compile_shader(GL_FRAGMENT_SHADER, frag_s);
+	free(frag_s);
+	shader->progId = glCreateProgram();
+	glAttachShader(shader->progId, vertID);
+	glAttachShader(shader->progId, fragID);
+
+	add_attribute(shader, "vertexPosition");
+	add_attribute(shader, "normal");
+
+
+	link_shader(shader, vertID, fragID);
+
+	use_shader(shader);
+	unuse_shader(shader);
+
+	uint VertBo,NormBo,UvOB, VAOtex,vaoNoTex;
+	glGenBuffers(1, (GLuint)VertBo);
+	glGenBuffers(1, (GLuint)NormBo);
+	glGenBuffers(1, (GLuint)UvOB);
+	glGenVertexArrays(1, &VAOtex);
+	glGenVertexArrays(1, &vaoNoTex);
+
+	glCheckError();
+
+	/* with texture*/
+	glBindVertexArray(VAOtex);
+
+	glBindBuffer(GL_ARRAY_BUFFER, VertBo);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, NormBo);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(1);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	glBindVertexArray(0);
+
+	glCheckError();
+	/* no texture*/
+	glBindVertexArray(vaoNoTex);
+
+	glBindBuffer(GL_ARRAY_BUFFER, VertBo);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, UvOB);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(1);
+
+	glBindBuffer(GL_ARRAY_BUFFER, NormBo);
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(2);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	glBindVertexArray(0);
+
+	glCheckError();
+
+	rend->modelLOCtex = glGetUniformLocation(rend->withTex.progId, "model");
+	rend->viewLOCtex = glGetUniformLocation(rend->withTex.progId, "view");
+	rend->projectionLOCtex = glGetUniformLocation(rend->withTex.progId, "projection");
+
+	rend->modelLOCnoTex = glGetUniformLocation(rend->noTex.progId, "model");
+	rend->viewLOCnoTex = glGetUniformLocation(rend->noTex.progId, "view");
+	rend->projectionLOCnoTex = glGetUniformLocation(rend->noTex.progId, "projection");
+
+
+	assert(!(rend->modelLOCtex == GL_INVALID_INDEX || rend->viewLOCtex == GL_INVALID_INDEX || rend->projectionLOCtex == GL_INVALID_INDEX || rend->modelLOCnoTex == GL_INVALID_INDEX ||
+		rend->viewLOCnoTex == GL_INVALID_INDEX || rend->viewLOCnoTex == GL_INVALID_INDEX || rend->projectionLOCnoTex == GL_INVALID_INDEX));
 }
 
-inline void render(const ModelHandle* handle,const vec3 pos, const vec3 rotations, const float scale)
-{
 
+
+inline void render(const int model,const vec3 pos, const vec3 rotations, const float scale)
+{
+	ModelHandle* m = &model_cache[model];
+
+	//käytä texturoitua
+	if(m->texcoordbuffer != NULL)
+	{
+		
+	}
+	// käytä normaalia
+	else
+	{
+
+	}
 }
 
 
 inline void render_model(const ModelHandle* handle, const vec3 pos, const vec3 rotations, const float scale, const int modelLOC)
 {
+
+
 	mat4 model = { 0 };
 	identity(&model);
 	translate_mat4(&model, &model, pos);
@@ -276,3 +382,4 @@ inline void render_model_normals(uint VBO, uint normalbuffer, ShaderHandle* hand
 	unuse_shader(handle);
 }
 
+//todo push to renderer sort ja älä bindaa vertexejä uudestaan
