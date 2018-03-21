@@ -134,15 +134,125 @@ inline void init_renderer(Renderer *rend)
 }
 
 
+typedef struct
+{
+	vec3 diffuse;
+	vec3 specular;
+	float shininess;
+} Material;
 
-inline void render(const int model,const vec3 pos, const vec3 rotations, const float scale)
+typedef struct
+{
+	vec3 position;
+	vec3 ambient;
+	vec3 diffuse;
+	vec3 specular;
+} LightValues;
+
+inline void render(Renderer* rend,const int model,const vec3 pos, const vec3 rotations, const float scale,Material material,LightValues light,Camera* camera)
 {
 	ModelHandle* m = &model_cache[model];
 
 	//käytä texturoitua
 	if(m->texcoordbuffer != NULL)
 	{
+
+		glBindBuffer(GL_ARRAY_BUFFER, rend->VertBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * m->vertexsize, NULL, GL_DYNAMIC_DRAW);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vec3) * m->vertexsize, m->vertexbuffer);
+
+		glBindBuffer(GL_ARRAY_BUFFER, rend->NormBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * m->vertexsize, NULL, GL_DYNAMIC_DRAW);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vec3) * m->vertexsize, m->normalbuffer);
+
+		glBindBuffer(GL_ARRAY_BUFFER, rend->UvBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(vec2) * m->vertexsize, NULL, GL_DYNAMIC_DRAW);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vec3) * m->vertexsize, m->texcoordbuffer);
+
+		mat4 model = { 0 };
+		identity(&model);
+		translate_mat4(&model, &model, pos);
+		rotate_mat4_Z(&model, deg_to_rad(rotations.z));
+		rotate_mat4_Y(&model, deg_to_rad(rotations.y));
+		rotate_mat4_X(&model, deg_to_rad(rotations.x));
+
+		scale_mat4(&model, scale);
+
+		use_shader(&rend->withTex);
+
+		set_vec3(&rend->withTex, "ViewPos", &camera->cameraPos);
+
+		//aseta materiaalit
+		set_vec3(&rend->withTex, "material.diffuse", &material.diffuse);
+		set_vec3(&rend->withTex, "material.specular", &material.specular);
+		set_uniform_float(&rend->withTex, "material.shininess", material.shininess);
+		//set_float(&rend->withTex, "material.shininess", &material.shininess);
 		
+		/*
+		set_vec3(handle, "ViewPos", &camera->cameraPos);
+	typedef struct
+	{
+		vec3 ambient;
+		vec3 diffuse;
+		vec3 specular;
+		float shininess;
+	} Material;
+
+	Material cube = { 0 };
+	vec3 amb = { 0.9f, 0.9f, 0.9f };
+	vec3 diff = { 0.9f, 0.9f, 0.9f };
+	vec3 spec = { 0.9f, 0.9f, 0.9f };
+	float shine = 12.0f;
+	cube.ambient = amb;
+	cube.diffuse = diff;
+	cube.specular = spec;
+	cube.shininess = shine;
+	//set_vec3(&shader, "material.ambient", &cube.ambient);
+	//set_vec3(&shader, "material.diffuse", &cube.diffuse);
+	set_vec3(handle, "material.specular", &cube.diffuse);
+	set_uniform_float(handle, "material.shininess", cube.shininess);
+
+	//typedef struct
+	//{
+	//	vec3 position;
+	//	vec3 ambient;
+	//	vec3 diffuse;
+	//	vec3 specular;
+	//} LightP;
+
+	LightValues pro = { 0 };
+	pro.position = lightpos;
+	vec3 ambL = { 0.7f, 0.7f, 0.7f };
+	vec3 diffL = { 0.5f, 0.5f, 0.5f };
+	vec3 specL = { 1.0f, 1.0f, 1.0f };
+	pro.ambient = ambL;
+	pro.diffuse = diffL;
+	pro.specular = specL;
+
+	vec3 ldir = { -0.2f, -1.0f, -0.3f };
+	//set_vec3(&shader, "light.direction", &ldir);
+	set_vec3(handle, "light.position", &lightpos);
+	set_vec3(handle, "light.ambient", &pro.ambient);
+	set_vec3(handle, "light.diffuse", &pro.diffuse);
+	set_vec3(handle, "light.specular", &pro.diffuse);
+
+	set_uniform_float(handle, "light.constant", 1.0f);
+	set_uniform_float(handle, "light.linear", 0.1f);
+	set_uniform_float(handle, "light.quadratic", 0.032f);
+
+	glUniformMatrix4fv(viewLOC, 1, GL_FALSE, (GLfloat*)camera->view.mat);
+
+	perspective(projection, deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 100.f);
+	glUniformMatrix4fv(projectionLOC, 1, GL_FALSE, (GLfloat*)projection->mat);
+	glBindVertexArray(VAO);
+		*/
+
+		//rotate_mat4(&model, &model, axis,/*(float)glfwGetTime()*/1 * deg_to_rad(i * 10));
+		glUniformMatrix4fv(rend->modelLOCtex, 1, GL_FALSE, (GLfloat*)model.mat);
+		glDrawArrays(GL_TRIANGLES, 0, m->vertexsize);
+
+
+		unuse_shader(&rend->withTex);
 	}
 	// käytä normaalia
 	else
@@ -207,15 +317,15 @@ inline void render_boxes(ShaderHandle* handle, uint VBO, uint VAO, uint projecti
 	set_vec3(handle, "material.specular", &cube.diffuse);
 	set_uniform_float(handle, "material.shininess", cube.shininess);
 
-	typedef struct
-	{
-		vec3 position;
-		vec3 ambient;
-		vec3 diffuse;
-		vec3 specular;
-	} LightP;
+	//typedef struct
+	//{
+	//	vec3 position;
+	//	vec3 ambient;
+	//	vec3 diffuse;
+	//	vec3 specular;
+	//} LightP;
 
-	LightP pro = { 0 };
+	LightValues pro = { 0 };
 	pro.position = lightpos;
 	vec3 ambL = { 0.7f, 0.7f, 0.7f };
 	vec3 diffL = { 0.5f, 0.5f, 0.5f };
@@ -313,13 +423,7 @@ inline void render_model_normals(uint VBO, uint normalbuffer, ShaderHandle* hand
 
 
 	set_vec3(handle, "ViewPos", &camera->cameraPos);
-	typedef struct
-	{
-		vec3 ambient;
-		vec3 diffuse;
-		vec3 specular;
-		float shininess;
-	} Material;
+
 
 	Material cube = { 0 };
 	vec3 amb = { 0.9f, 0.9f, 0.9f };
@@ -335,15 +439,9 @@ inline void render_model_normals(uint VBO, uint normalbuffer, ShaderHandle* hand
 	set_vec3(handle, "material.specular", &cube.diffuse);
 	set_uniform_float(handle, "material.shininess", cube.shininess);
 
-	typedef struct
-	{
-		vec3 position;
-		vec3 ambient;
-		vec3 diffuse;
-		vec3 specular;
-	} LightP;
 
-	LightP pro = { 0 };
+
+	LightValues pro = { 0 };
 	pro.position = lightpos;
 	vec3 ambL = { 0.7f, 0.7f, 0.7f };
 	vec3 diffL = { 0.5f, 0.5f, 0.5f };
