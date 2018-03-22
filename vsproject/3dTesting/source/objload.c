@@ -34,7 +34,7 @@ ModelHandle load_model(const int model)
 
 	if(vertexes == NULL)
 	{
-		vertexes = malloc(sizeof(vec3)*MAX_VER_AMOUNT + sizeof(int) * MAX_VER_AMOUNT + sizeof(vec3)*MAX_VER_AMOUNT + sizeof(vec2)*MAX_VER_AMOUNT);
+		vertexes = malloc(sizeof(vec3)*MAX_VER_AMOUNT + sizeof(vec2)*MAX_VER_AMOUNT + sizeof(vec3)*MAX_VER_AMOUNT +  sizeof(int) * MAX_VER_AMOUNT);
 		texturecoords = (vec2*)(vertexes + MAX_VER_AMOUNT);
 		normals = (vec3*)(texturecoords + MAX_VER_AMOUNT);
 		IndexBuffer = (int*)(normals + MAX_VER_AMOUNT);
@@ -58,6 +58,7 @@ ModelHandle load_model(const int model)
 		}
 		else if(!strcmp("vt", buff))
 		{
+			hasTexCoords = 1;
 			assert(textureCoordSize + 1 < MAX_VER_AMOUNT);
 			float temp = 0;
 			int matches = fscanf(file, "%f %f %f\n", &texturecoords[textureCoordSize].x, &texturecoords[textureCoordSize].y,&temp);
@@ -84,9 +85,9 @@ ModelHandle load_model(const int model)
 				assert(indexBufferSize + 9 < MAX_VER_AMOUNT);
 				int temp = 0;
 				// vert, coor, norm
-				int matches = fscanf(file, "%d %d %d",&IndexBuffer[indexBufferSize], &IndexBuffer[indexBufferSize + 1], &IndexBuffer[indexBufferSize + 2]);
-				matches += fscanf(file, "%d %d %d", &IndexBuffer[indexBufferSize + 3], &IndexBuffer[indexBufferSize + 4], &IndexBuffer[indexBufferSize + 5]);
-				matches += fscanf(file, "%d %d %d\n", &IndexBuffer[indexBufferSize + 6], &IndexBuffer[indexBufferSize + 7], &IndexBuffer[indexBufferSize + 8]);
+				int matches = fscanf(file, "%d/%d/%d",&IndexBuffer[indexBufferSize], &IndexBuffer[indexBufferSize + 1], &IndexBuffer[indexBufferSize + 2]);
+				matches += fscanf(file, "%d/%d/%d", &IndexBuffer[indexBufferSize + 3], &IndexBuffer[indexBufferSize + 4], &IndexBuffer[indexBufferSize + 5]);
+				matches += fscanf(file, "%d/%d/%d\n", &IndexBuffer[indexBufferSize + 6], &IndexBuffer[indexBufferSize + 7], &IndexBuffer[indexBufferSize + 8]);
 
 				indexBufferSize += 9;
 				if (matches != 9) {
@@ -97,8 +98,8 @@ ModelHandle load_model(const int model)
 			{
 				// no texture coords
 				assert(indexBufferSize + 6 < MAX_VER_AMOUNT);
-				int matches = fscanf(file, "%d %d %d", &IndexBuffer[indexBufferSize], &IndexBuffer[indexBufferSize + 1], &IndexBuffer[indexBufferSize + 2]);
-				matches += fscanf(file, "%d %d %d", &IndexBuffer[indexBufferSize + 3], &IndexBuffer[indexBufferSize + 4], &IndexBuffer[indexBufferSize + 5]);
+				int matches = fscanf(file, "%d/%d/%d", &IndexBuffer[indexBufferSize], &IndexBuffer[indexBufferSize + 1], &IndexBuffer[indexBufferSize + 2]);
+				matches += fscanf(file, "%d/%d/%d", &IndexBuffer[indexBufferSize + 3], &IndexBuffer[indexBufferSize + 4], &IndexBuffer[indexBufferSize + 5]);
 
 				indexBufferSize += 6;
 				if (matches != 6) {
@@ -122,8 +123,14 @@ ModelHandle load_model(const int model)
 		int index = IndexBuffer[i++];
 		outVertBuffer[vertsize++] = vertexes[index - 1];
 
+		if (hasTexCoords)
+		{
+			index = IndexBuffer[i++];
+			outTextCoordBuffer[uvsize++] = texturecoords[index - 1];
+		}
+
 		index = IndexBuffer[i++];
-		outVertBuffer[vertsize++] = vertexes[index - 1];
+		outNormalBuffer[normalsize++] = normals[index - 1];
 
 		index = IndexBuffer[i++];
 		outVertBuffer[vertsize++] = vertexes[index - 1];
@@ -132,21 +139,49 @@ ModelHandle load_model(const int model)
 		{
 			index = IndexBuffer[i++];
 			outTextCoordBuffer[uvsize++] = texturecoords[index - 1];
+		}
 
-			index = IndexBuffer[i++];
-			outTextCoordBuffer[uvsize++] = texturecoords[index - 1];
+		index = IndexBuffer[i++];
+		outNormalBuffer[normalsize++] = normals[index - 1];
 
+		index = IndexBuffer[i++];
+		outVertBuffer[vertsize++] = vertexes[index - 1];
+
+		if (hasTexCoords)
+		{
 			index = IndexBuffer[i++];
 			outTextCoordBuffer[uvsize++] = texturecoords[index - 1];
 		}
+
 		index = IndexBuffer[i++];
 		outNormalBuffer[normalsize++] = normals[index - 1];
+
+
+
+
+
+
+
+
+
+	/*	index = IndexBuffer[i++];
+		outVertBuffer[vertsize++] = vertexes[index - 1];
+
+		index = IndexBuffer[i++];
+		outVertBuffer[vertsize++] = vertexes[index - 1];
+
+
+			index = IndexBuffer[i++];
+			outTextCoordBuffer[uvsize++] = texturecoords[index - 1];
+
+			index = IndexBuffer[i++];
+			outTextCoordBuffer[uvsize++] = texturecoords[index - 1];
 
 		index = IndexBuffer[i++];
 		outNormalBuffer[normalsize++] = normals[index - 1];		
 
 		index = IndexBuffer[i++];
-		outNormalBuffer[normalsize++] = normals[index - 1];
+		outNormalBuffer[normalsize++] = normals[index - 1];*/
 	}
 
 
@@ -154,7 +189,7 @@ ModelHandle load_model(const int model)
 	model_cache[model].vertexbuffer = outVertBuffer;
 	model_cache[model].normalbuffer = outNormalBuffer;
 	model_cache[model].texcoordbuffer = outTextCoordBuffer;
-	model_cache[model].vertexsize = indexBufferSize;
+	model_cache[model].vertexsize = vertsize;
 	return	model_cache[model];
 }
 
@@ -166,7 +201,7 @@ void dispose_model_memory()
 		//vertex buffer on pää handle modelin muistiin, kaikki muu muisti on sen perässä
 		if (model_cache[i].vertexbuffer != NULL)
 		{
-			free(model_cache[i].normalbuffer);
+			free(model_cache[i].vertexbuffer);
 		}
 	}
 }

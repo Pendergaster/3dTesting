@@ -74,6 +74,16 @@ void set_vec3(const ShaderHandle* sha, const char* name, const vec3* vec)
 	}
 	glUniform3f(vertexLocation, vec->x, vec->y, vec->z);
 }
+void set_vec4(const ShaderHandle* sha, const char* name, const vec4* vec)
+{
+	int vertexLocation = glGetUniformLocation(sha->progId, name);
+	if (vertexLocation == GL_INVALID_INDEX)
+	{
+		FATALERROR;
+	}
+	glUniform4f(vertexLocation, vec->x, vec->y, vec->z,vec->w);
+}
+
 
 
 uint get_uniform_location(ShaderHandle* shader, const char* name)

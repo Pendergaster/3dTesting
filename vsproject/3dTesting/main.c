@@ -418,7 +418,7 @@ void init_light(Light* l)
 	// set the vertex attributes (only position data for our lamp)
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	//glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 
 }
@@ -533,7 +533,7 @@ int main()
 	init_keys();
 
 #define reee
-#ifdef reee
+#ifdef vanha
 
 	//char* you = "vertexPosition"; // , "uv", "normal");
 	//ShaderHandle shader = create_shader_stof(3, vert_sha, frag_sha, you);
@@ -629,7 +629,7 @@ int main()
 
 	glCheckError();
 
-#ifdef reee
+#ifdef vanha
 
 	uint modelLOC = glGetUniformLocation(shader.progId, "model");
 	uint viewLOC = glGetUniformLocation(shader.progId, "view");
@@ -650,10 +650,10 @@ int main()
 	glCheckError();
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	unuse_shader(&shader);
 #endif
 	glEnable(GL_DEPTH_TEST);
 
-	unuse_shader(&shader);
 	Light light = { 0 };
 	init_light(&light);
 
@@ -667,8 +667,8 @@ int main()
 
 	mat4 lampRotater = { 0 };
 	vec3 lampAxis = { 1.f, 1.f, 0.f};
-	create_rotate_mat4(&lampRotater, lampAxis, deg_to_rad(1.f));
-	vec3 oldLightPos = { 0.f , 0.f , -2.f };
+	create_rotate_mat4(&lampRotater, lampAxis, deg_to_rad(0.01f));
+	vec3 oldLightPos = { 10.f , 0.f , -10.f };
 
 	
 	/*ModelHandle TeaPotNormal = load_model(teapotnormal);
@@ -697,6 +697,9 @@ int main()
 	}*/
 
 
+
+	Renderer rend = { 0 };
+	init_renderer(&rend);
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
@@ -743,18 +746,47 @@ int main()
 		vec4 resL = { 0 };
 		mat4_mult_vec4(&resL, &lampRotater, &tempL);
 		vec3 newlightPos = { resL.x,resL.y,resL.z };
-
+		
 		oldLightPos = newlightPos;
 
-		render_boxes(&shader, VBO,VAO,projectionLOC,modelLOC,viewLOC,oldLightPos,&camera,&projection);
+		//render_boxes(&shader, VBO,VAO,projectionLOC,modelLOC,viewLOC,oldLightPos,&camera,&projection);
 #endif
+		perspective(&projection, deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 100.f);
 		render_light(light, &camera, &projection, newlightPos);
 
 
-		printf("%.2f %.2f %.2f \n", camera.cameraPos.x, camera.cameraPos.y, camera.cameraPos.z);
+		printf("%.2f %.2f %.2f \n", newlightPos.x, newlightPos.y, newlightPos.z);
 		//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 		glCheckError();
+		vec3 pos = { 0 };
+
+		Material cube = { 0 };
+		vec3 diff = { 0.9f, 0.9f, 0.9f };
+		vec3 spec = { 0.9f, 0.9f, 0.9f };
+		float shine = 12.0f;
+
+		cube.diffuse = diff;
+		cube.specular = spec;
+		cube.shininess = shine;
+		
+
+
+		LightValues pro = { 0 };
+		vec3 ambL = { 0.7f, 0.7f, 0.7f };
+		vec3 diffL = { 0.5f, 0.5f, 0.5f };
+		vec3 specL = { 1.0f, 1.0f, 1.0f };
+		pro.position = newlightPos;
+		pro.ambient = ambL;
+		pro.diffuse = diffL;
+		pro.specular = specL;
+
+		pro.constant = 1.f;
+		pro.linear = 0.1f;
+		pro.quadratic = 0.032f;
+
+		render(&rend, teapot, pos, pos, 0.5f, cube, pro, &camera, 0);
+
 		if (!mouse_init)
 		{
 			update_camera(&camera, in.mousepos, in.mousepos);
