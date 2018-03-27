@@ -27,55 +27,56 @@ typedef struct
 
 inline void init_renderer(Renderer *rend)
 {
-	/* with texture*/
-	ShaderHandle* shader = &rend->withTex;
-	char* vert_s = load_file(vert_sha, NULL);
-	uint vertID = compile_shader(GL_VERTEX_SHADER, vert_s);
-	free(vert_s);
+	{
+		/* with texture*/
+		ShaderHandle* shader = &rend->withTex;
+		char* vert_s = load_file(vert_sha, NULL);
+		uint vertID = compile_shader(GL_VERTEX_SHADER, vert_s);
+		free(vert_s);
 
-	char* frag_s = load_file(frag_sha, NULL);
-	uint fragID = compile_shader(GL_FRAGMENT_SHADER, frag_s);
-	free(frag_s);
-	shader->progId = glCreateProgram();
-	glAttachShader(shader->progId, vertID);
-	glAttachShader(shader->progId, fragID);
+		char* frag_s = load_file(frag_sha, NULL);
+		uint fragID = compile_shader(GL_FRAGMENT_SHADER, frag_s);
+		free(frag_s);
+		shader->progId = glCreateProgram();
+		glAttachShader(shader->progId, vertID);
+		glAttachShader(shader->progId, fragID);
 
-	add_attribute(shader, "vertexPosition");
-	add_attribute(shader, "uv");
-	add_attribute(shader, "normal");
+		add_attribute(shader, "vertexPosition");
+		add_attribute(shader, "uv");
+		add_attribute(shader, "normal");
 
 
-	link_shader(shader, vertID, fragID);
+		link_shader(shader, vertID, fragID);
 
-	use_shader(shader);
-	unuse_shader(shader);
+		use_shader(shader);
+		unuse_shader(shader);
+	}
 
 
 	/* no texture*/
+	{
+		ShaderHandle* shader = &rend->noTex;
+		char* vert_s = load_file(model_vert, NULL);
+		uint vertID = compile_shader(GL_VERTEX_SHADER, vert_s);
+		free(vert_s);
 
-	shader = &rend->noTex;
-	vert_s = load_file(model_vert, NULL);
-	vertID = compile_shader(GL_VERTEX_SHADER, vert_s);
-	free(vert_s);
+		char* frag_s = load_file(model_frag, NULL);
+		uint fragID = compile_shader(GL_FRAGMENT_SHADER, frag_s);
+		free(frag_s);
+		shader->progId = glCreateProgram();
+		glAttachShader(shader->progId, vertID);
+		glAttachShader(shader->progId, fragID);
 
-	frag_s = load_file(model_frag, NULL);
-	fragID = compile_shader(GL_FRAGMENT_SHADER, frag_s);
-	free(frag_s);
-	shader->progId = glCreateProgram();
-	glAttachShader(shader->progId, vertID);
-	glAttachShader(shader->progId, fragID);
+		add_attribute(shader, "vertexPosition");
+		add_attribute(shader, "normal");
 
-	add_attribute(shader, "vertexPosition");
-	add_attribute(shader, "normal");
+		link_shader(shader, vertID, fragID);
 
-
-	link_shader(shader, vertID, fragID);
-
-	use_shader(shader);
-	vec3 te = { 0 };
-	set_vec3(shader, "material.diffuse", &te);
-	set_vec3(&rend->withTex, "material.diffuse", &te);
-	unuse_shader(shader);
+		use_shader(shader);
+		vec3 te = { 0 };
+		set_vec3(shader, "material.diffuse", &te);
+		unuse_shader(shader);
+	}
 
 	uint VertBo,NormBo,UvOB, VAOtex,vaoNoTex;
 	glGenBuffers(1, &VertBo);
@@ -253,8 +254,8 @@ inline void render(Renderer* rend,const int model,const vec3 pos, const vec3 rot
 		set_vec3(&rend->noTex, "ViewPos", &camera->cameraPos);
 
 		//aseta materiaalit
-		set_vec3(&rend->noTex, "material.diffuse", &material.diffuse);
-		set_vec3(&rend->noTex, "material.specular", &material.specular);
+		set_vec3(&rend->noTex, "material.diffuse", &material.diffuse);		//väri vec3
+		set_vec3(&rend->noTex, "material.specular", &material.specular);	
 		set_uniform_float(&rend->noTex, "material.shininess", material.shininess);
 
 		//set light values
@@ -267,8 +268,8 @@ inline void render(Renderer* rend,const int model,const vec3 pos, const vec3 rot
 		set_uniform_float(&rend->noTex, "light.linear", light.linear);
 		set_uniform_float(&rend->noTex, "light.quadratic", light.quadratic);
 
-		vec4 color = { 1,1,1,1 };
-		set_vec4(&rend->noTex, "Color", &color);
+		//vec4 color = { 1,1,1,1 };
+		//set_vec4(&rend->noTex, "Color", &color);
 
 		glUniformMatrix4fv(rend->viewLOCnoTex, 1, GL_FALSE, (GLfloat*)camera->view.mat);
 

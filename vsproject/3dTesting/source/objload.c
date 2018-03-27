@@ -17,8 +17,11 @@ static vec3* normals = NULL;
 static vec2* texturecoords = NULL;
 static int* IndexBuffer = NULL;
 
+
+
 ModelHandle load_model(const int model)
 {
+
 	if(model_cache[model].vertexbuffer != NULL)
 	{
 		return model_cache[model];

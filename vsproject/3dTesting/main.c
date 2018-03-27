@@ -9,6 +9,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include <stdarg.h>
+#include "source\smallGenericDynArray.h"
 typedef struct
 {
 	int a;
@@ -659,7 +660,7 @@ int main()
 
 	glCheckError();
 
-	float camSpeed = 0.05f;
+	float camSpeed = 0.55f;
 	//vec3 camDir = { 0.f , 0.f , -1.f };
 	Camera camera = { 0 };
 	init_camera(&camera);
@@ -667,7 +668,7 @@ int main()
 
 	mat4 lampRotater = { 0 };
 	vec3 lampAxis = { 1.f, 1.f, 0.f};
-	create_rotate_mat4(&lampRotater, lampAxis, deg_to_rad(0.01f));
+	create_rotate_mat4(&lampRotater, lampAxis, deg_to_rad(0.2f));
 	vec3 oldLightPos = { 10.f , 0.f , -10.f };
 
 	
@@ -762,9 +763,9 @@ int main()
 		vec3 pos = { 0 };
 
 		Material cube = { 0 };
-		vec3 diff = { 0.9f, 0.9f, 0.9f };
-		vec3 spec = { 0.9f, 0.9f, 0.9f };
-		float shine = 12.0f;
+		vec3 diff = { 1.0f, 0.5f, 0.31f };
+		vec3 spec = { 0.5f, 0.5f, 0.5f };
+		float shine = 32.0f;
 
 		cube.diffuse = diff;
 		cube.specular = spec;
@@ -773,9 +774,9 @@ int main()
 
 
 		LightValues pro = { 0 };
-		vec3 ambL = { 0.7f, 0.7f, 0.7f };
+		vec3 ambL = { .2f, .2f, .2f };
 		vec3 diffL = { 0.5f, 0.5f, 0.5f };
-		vec3 specL = { 1.0f, 1.0f, 1.0f };
+		vec3 specL = { 1.f, 1.f, 1.f };
 		pro.position = newlightPos;
 		pro.ambient = ambL;
 		pro.diffuse = diffL;

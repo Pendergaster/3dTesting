@@ -9,7 +9,7 @@ uniform vec3 ViewPos; // if you calculate in view matrix this is not needed
 
 struct Material {
    // vec3 ambient;
-    vec3 diffuse;
+   // vec3 diffuse; TODO SAMPLER THIS
     vec3 specular;
     float shininess;
 }; 
