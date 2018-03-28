@@ -9,8 +9,8 @@ vec3 cubepositions[5] = {
 
 typedef struct
 {
-	ShaderHandle	noTex;
-	ShaderHandle	withTex;
+	uint			noTex;
+	uint			withTex;
 	uint			VertBO;
 	uint			UvBO;
 	uint			NormBO;
@@ -29,7 +29,10 @@ inline void init_renderer(Renderer *rend)
 {
 	{
 		/* with texture*/
-		ShaderHandle* shader = &rend->withTex;
+		LASTWRITES[frag_sha] = Win32GetLastWriteTime(txt_file_names[frag_sha]);
+		LASTWRITES[vert_sha] = Win32GetLastWriteTime(txt_file_names[vert_sha]);
+		ShaderHandle* shader = get_shader(SHA_PROG_UV);// &rend->withTex;
+		rend->withTex = SHA_PROG_UV;
 		char* vert_s = load_file(vert_sha, NULL);
 		uint vertID = compile_shader(GL_VERTEX_SHADER, vert_s);
 		free(vert_s);
@@ -55,7 +58,10 @@ inline void init_renderer(Renderer *rend)
 
 	/* no texture*/
 	{
-		ShaderHandle* shader = &rend->noTex;
+		LASTWRITES[model_frag] = Win32GetLastWriteTime(txt_file_names[model_frag]);
+		LASTWRITES[model_vert] = Win32GetLastWriteTime(txt_file_names[model_vert]);
+		ShaderHandle* shader = get_shader(SHA_PROG_NO_UV);// &rend->withTex;
+		rend->noTex = SHA_PROG_NO_UV;
 		char* vert_s = load_file(model_vert, NULL);
 		uint vertID = compile_shader(GL_VERTEX_SHADER, vert_s);
 		free(vert_s);
@@ -124,13 +130,15 @@ inline void init_renderer(Renderer *rend)
 
 	glCheckError();
 
-	rend->modelLOCtex = glGetUniformLocation(rend->withTex.progId, "model");
-	rend->viewLOCtex = glGetUniformLocation(rend->withTex.progId, "view");
-	rend->projectionLOCtex = glGetUniformLocation(rend->withTex.progId, "projection");
+	ShaderHandle* withTex = get_shader(rend->withTex);
+	ShaderHandle* noTex = get_shader(rend->noTex);
+	rend->modelLOCtex = glGetUniformLocation(withTex->progId, "model");
+	rend->viewLOCtex = glGetUniformLocation(withTex->progId, "view");
+	rend->projectionLOCtex = glGetUniformLocation(withTex->progId, "projection");
 
-	rend->modelLOCnoTex = glGetUniformLocation(rend->noTex.progId, "model");
-	rend->viewLOCnoTex = glGetUniformLocation(rend->noTex.progId, "view");
-	rend->projectionLOCnoTex = glGetUniformLocation(rend->noTex.progId, "projection");
+	rend->modelLOCnoTex = glGetUniformLocation(noTex->progId, "model");
+	rend->viewLOCnoTex = glGetUniformLocation(noTex->progId, "view");
+	rend->projectionLOCnoTex = glGetUniformLocation(noTex->progId, "projection");
 
 	rend->VaoNoTex = vaoNoTex;
 	rend->VaoTex = VAOtex;
@@ -169,6 +177,7 @@ inline void render(Renderer* rend,const int model,const vec3 pos, const vec3 rot
 	//käytä texturoitua
 	if (m->texcoordbuffer != NULL && texid != 0)
 	{
+
 		glBindBuffer(GL_ARRAY_BUFFER, rend->VertBO);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * m->vertexsize, NULL, GL_DYNAMIC_DRAW);
 		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vec3) * m->vertexsize, m->vertexbuffer);
@@ -189,25 +198,25 @@ inline void render(Renderer* rend,const int model,const vec3 pos, const vec3 rot
 		rotate_mat4_X(&model, deg_to_rad(rotations.x));
 
 		scale_mat4(&model, scale);
+		ShaderHandle* withTex = get_shader(rend->withTex);
+		use_shader(withTex);
 
-		use_shader(&rend->withTex);
-
-		set_vec3(&rend->withTex, "ViewPos", &camera->cameraPos);
+		set_vec3(withTex, "ViewPos", &camera->cameraPos);
 
 		//aseta materiaalit
-		set_vec3(&rend->withTex, "material.diffuse", &material.diffuse);
-		set_vec3(&rend->withTex, "material.specular", &material.specular);
-		set_uniform_float(&rend->withTex, "material.shininess", material.shininess);
+		set_vec3(withTex, "material.diffuse", &material.diffuse);
+		set_vec3(withTex, "material.specular", &material.specular);
+		set_uniform_float(withTex, "material.shininess", material.shininess);
 
 		//set light values
-		set_vec3(&rend->withTex, "light.position", &light.position);
-		set_vec3(&rend->withTex, "light.ambient", &light.ambient);
-		set_vec3(&rend->withTex, "light.diffuse", &light.diffuse);
-		set_vec3(&rend->withTex, "light.specular", &light.specular);
+		set_vec3(withTex, "light.position", &light.position);
+		set_vec3(withTex, "light.ambient", &light.ambient);
+		set_vec3(withTex, "light.diffuse", &light.diffuse);
+		set_vec3(withTex, "light.specular", &light.specular);
 
-		set_uniform_float(&rend->withTex, "light.constant", light.constant);
-		set_uniform_float(&rend->withTex, "light.linear", light.linear);
-		set_uniform_float(&rend->withTex, "light.quadratic", light.quadratic);
+		set_uniform_float(withTex, "light.constant", light.constant);
+		set_uniform_float(withTex, "light.linear", light.linear);
+		set_uniform_float(withTex, "light.quadratic", light.quadratic);
 
 		glUniformMatrix4fv(rend->viewLOCtex, 1, GL_FALSE, (GLfloat*)camera->view.mat);
 
@@ -224,7 +233,7 @@ inline void render(Renderer* rend,const int model,const vec3 pos, const vec3 rot
 
 		glDrawArrays(GL_TRIANGLES, 0, m->vertexsize);
 
-		unuse_shader(&rend->withTex);
+		unuse_shader(withTex);
 
 
 	}
@@ -248,25 +257,25 @@ inline void render(Renderer* rend,const int model,const vec3 pos, const vec3 rot
 		rotate_mat4_X(&model, deg_to_rad(rotations.x));
 
 		scale_mat4(&model, scale);
+		ShaderHandle* noTex = get_shader(rend->noTex);
+		use_shader(noTex);
 
-		use_shader(&rend->noTex);
-
-		set_vec3(&rend->noTex, "ViewPos", &camera->cameraPos);
+		set_vec3(noTex, "ViewPos", &camera->cameraPos);
 
 		//aseta materiaalit
-		set_vec3(&rend->noTex, "material.diffuse", &material.diffuse);		//väri vec3
-		set_vec3(&rend->noTex, "material.specular", &material.specular);	
-		set_uniform_float(&rend->noTex, "material.shininess", material.shininess);
+		set_vec3(noTex, "material.diffuse", &material.diffuse);		//väri vec3
+		set_vec3(noTex, "material.specular", &material.specular);	
+		set_uniform_float(noTex, "material.shininess", material.shininess);
 
 		//set light values
-		set_vec3(&rend->noTex, "light.position", &light.position);
-		set_vec3(&rend->noTex, "light.ambient", &light.ambient);
-		set_vec3(&rend->noTex, "light.diffuse", &light.diffuse);
-		set_vec3(&rend->noTex, "light.specular", &light.specular);
+		set_vec3(noTex, "light.position", &light.position);
+		set_vec3(noTex, "light.ambient", &light.ambient);
+		set_vec3(noTex, "light.diffuse", &light.diffuse);
+		set_vec3(noTex, "light.specular", &light.specular);
 
-		set_uniform_float(&rend->noTex, "light.constant", light.constant);
-		set_uniform_float(&rend->noTex, "light.linear", light.linear);
-		set_uniform_float(&rend->noTex, "light.quadratic", light.quadratic);
+		set_uniform_float(noTex, "light.constant", light.constant);
+		set_uniform_float(noTex, "light.linear", light.linear);
+		set_uniform_float(noTex, "light.quadratic", light.quadratic);
 
 		//vec4 color = { 1,1,1,1 };
 		//set_vec4(&rend->noTex, "Color", &color);
@@ -283,7 +292,7 @@ inline void render(Renderer* rend,const int model,const vec3 pos, const vec3 rot
 		glUniformMatrix4fv(rend->modelLOCnoTex, 1, GL_FALSE, (GLfloat*)model.mat);
 		glDrawArrays(GL_TRIANGLES, 0, m->vertexsize);
 
-		unuse_shader(&rend->noTex);
+		unuse_shader(noTex);
 
 	}
 }
@@ -391,17 +400,18 @@ inline void render_boxes(ShaderHandle* handle, uint VBO, uint VAO, uint projecti
 }
 inline void render_light(Light light, Camera* camera, mat4* projection, vec3 lightpos)
 {
+	ShaderHandle* s = get_shader(light.shader);
 	glBindBuffer(GL_ARRAY_BUFFER, light.vbo);
 	glBufferData(GL_ARRAY_BUFFER,/* sizeof(verticesBOX)*/sizeof(vec3) * TeaPot.vertexsize, NULL, GL_STATIC_DRAW);
 	glBufferSubData(GL_ARRAY_BUFFER, 0,/* sizeof(verticesBOX)*/sizeof(vec3) * TeaPot.vertexsize, TeaPot.vertexbuffer/*verticesBOX*/);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	use_shader(&light.shader);
+	use_shader(s);
 
-	set_mat4(&light.shader, "view", camera->view.mat);
-	set_mat4(&light.shader, "projection", projection->mat);
+	set_mat4(s, "view", camera->view.mat);
+	set_mat4(s, "projection", projection->mat);
 	vec3 lightColor = { 1.f,0.5f,1.f };
-	set_vec3(&light.shader, "lightColor", &lightColor);
+	set_vec3(s, "lightColor", &lightColor);
 
 	glBindVertexArray(light.vao);
 	glCheckError();
@@ -424,13 +434,13 @@ inline void render_light(Light light, Camera* camera, mat4* projection, vec3 lig
 	scale_mat4(&model, 0.5f);
 
 	//rotate_mat4(&model, &model, axis,/*(float)glfwGetTime()*/1 * deg_to_rad(i * 10));
-	glUniformMatrix4fv(glGetUniformLocation(light.shader.progId, "model"), 1, GL_FALSE, (GLfloat*)model.mat);
+	glUniformMatrix4fv(glGetUniformLocation(s->progId, "model"), 1, GL_FALSE, (GLfloat*)model.mat);
 	glDrawArrays(GL_TRIANGLES, 0,TeaPot.vertexsize/* 36*/);
 
 	//render_model(&TeaPot, lightpos, rotations, 0.2, glGetUniformLocation(light.shader.progId, "model"));
 	glBindVertexArray(0);
 
-	unuse_shader(&light.shader);
+	unuse_shader(s);
 }
 vec3 modelNormLocsTEMP[4] =
 {

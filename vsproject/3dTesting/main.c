@@ -10,6 +10,19 @@
 #include <stb_image.h>
 #include <stdarg.h>
 #include "source\smallGenericDynArray.h"
+
+#include <Windows.h>
+FILETIME Win32GetLastWriteTime(const char* path)
+{
+	FILETIME time = { 0 };
+	WIN32_FILE_ATTRIBUTE_DATA data;
+
+	if (GetFileAttributesEx(path, GetFileExInfoStandard, &data))
+		time = data.ftLastWriteTime;
+
+	return time;
+}
+
 typedef struct
 {
 	int a;
@@ -190,6 +203,7 @@ enum txt_files
 	SHADER_FILES(GENERATE_ENUM)
 	maxtxtfiles
 };
+FILETIME LASTWRITES[maxtxtfiles];
 
 
 enum picture_files {
@@ -330,7 +344,7 @@ typedef struct
 {
 	uint			vao;
 	uint			vbo;
-	ShaderHandle	shader;
+	uint			shader;
 } Light;
 
 	float verticesBOX[] = {
@@ -379,7 +393,10 @@ typedef struct
 ModelHandle TeaPot;
 void init_light(Light* l)
 {
+	LASTWRITES[light_frag] = Win32GetLastWriteTime(txt_file_names[light_frag]);
+	LASTWRITES[light_vert] = Win32GetLastWriteTime(txt_file_names[light_vert]);
 
+	ShaderHandle* s = get_shader(LIGHT);
 	char* vert_s = load_file(light_vert,NULL);
 	uint vertID = compile_shader(GL_VERTEX_SHADER, vert_s);
 	free(vert_s);
@@ -387,17 +404,17 @@ void init_light(Light* l)
 	char* frag_s = load_file(light_frag,NULL);
 	uint fragID = compile_shader(GL_FRAGMENT_SHADER, frag_s);
 	free(frag_s);
-	l->shader.progId = glCreateProgram();
-	glAttachShader(l->shader.progId, vertID);
-	glAttachShader(l->shader.progId, fragID);
+	s->progId = glCreateProgram();
+	glAttachShader(s->progId, vertID);
+	glAttachShader(s->progId, fragID);
 
-	add_attribute(&l->shader, "vertexPosition");
+	add_attribute(s, "vertexPosition");
 
-	link_shader(&l->shader, vertID, fragID);
+	link_shader(s, vertID, fragID);
 
-	use_shader(&l->shader);
-	unuse_shader(&l->shader);
-
+	use_shader(s);
+	unuse_shader(s);
+	l->shader = LIGHT;
 
 	TeaPot = load_model(teapot);
 
@@ -470,6 +487,7 @@ float vertices[] = {
 
 
 #include "source/modelrendering.c"
+void hotload_shaders(double dt);
 int main()
 {
 
@@ -654,13 +672,13 @@ int main()
 	unuse_shader(&shader);
 #endif
 	glEnable(GL_DEPTH_TEST);
-
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	Light light = { 0 };
 	init_light(&light);
 
 	glCheckError();
 
-	float camSpeed = 0.55f;
+	float camSpeed = 0.1f;
 	//vec3 camDir = { 0.f , 0.f , -1.f };
 	Camera camera = { 0 };
 	init_camera(&camera);
@@ -670,73 +688,74 @@ int main()
 	vec3 lampAxis = { 1.f, 1.f, 0.f};
 	create_rotate_mat4(&lampRotater, lampAxis, deg_to_rad(0.2f));
 	vec3 oldLightPos = { 10.f , 0.f , -10.f };
-
 	
-	/*ModelHandle TeaPotNormal = load_model(teapotnormal);
-	{
-	
-		ShaderHandle modelnormalshader = { 0 };
-		char* vert_sModel = load_file(model_vert, NULL);
-		uint vertIDModel = compile_shader(GL_VERTEX_SHADER, vert_sModel);
-		free(vert_sModel);
-
-		char* frag_sModel = load_file(model_frag, NULL);
-		uint fragIDModel = compile_shader(GL_FRAGMENT_SHADER, frag_sModel);
-		free(frag_sModel);
-		modelnormalshader.progId = glCreateProgram();
-		glAttachShader(modelnormalshader.progId, vertIDModel);
-		glAttachShader(modelnormalshader.progId, fragIDModel);
-
-		add_attribute(&modelnormalshader, "vertexPosition");
-		add_attribute(&modelnormalshader, "normal");
-
-		link_shader(&modelnormalshader, vertID, fragID);
-
-		use_shader(&modelnormalshader);
-		unuse_shader(&modelnormalshader);
-	
-	}*/
 
 
 
 	Renderer rend = { 0 };
 	init_renderer(&rend);
+	const double dt = 1.0 / 60.0;
+
+	double currentTime = glfwGetTime();
+	double accumulator = 0.0;
+
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
+
+		double newTime = glfwGetTime();
+
+		double frameTime = newTime - currentTime;
+		currentTime = newTime;
+		accumulator += frameTime;
 		if (key_pressed(GLFW_KEY_ESCAPE))
 		{
 			break;
 		}
-		if (key_down(GLFW_KEY_W))
-		{
-			vec3 addvec;
-			scale_vec3(&addvec, &camera.cameraDir, camSpeed);
-			add_vec3(&camera.cameraPos, &camera.cameraPos, &addvec);
-		}
-		if (key_down(GLFW_KEY_A))
-		{
-			vec3 addvec;
-			cross_product(&addvec, &camera.cameraDir, &camera.camUp);
-			normalize_vec3(&addvec);
-			scale_vec3(&addvec, &addvec, camSpeed);
-			neg_vec3(&camera.cameraPos, &camera.cameraPos, &addvec);
-		}
-		if (key_down(GLFW_KEY_D))
-		{
-			vec3 addvec;
-			cross_product(&addvec, &camera.cameraDir, &camera.camUp);
-			normalize_vec3(&addvec);
-			scale_vec3(&addvec, &addvec, camSpeed);
-			add_vec3(&camera.cameraPos, &camera.cameraPos, &addvec);
-		}
-		if (key_down(GLFW_KEY_S))
-		{
-			vec3 addvec;
-			scale_vec3(&addvec, &camera.cameraDir, -camSpeed);
-			add_vec3(&camera.cameraPos, &camera.cameraPos, &addvec);;
-		}
 
+		while (accumulator >= dt)//processloop
+		{
+			accumulator -= dt;
+			if (key_down(GLFW_KEY_W))
+			{
+				vec3 addvec;
+				scale_vec3(&addvec, &camera.cameraDir, camSpeed);
+				add_vec3(&camera.cameraPos, &camera.cameraPos, &addvec);
+			}
+			if (key_down(GLFW_KEY_A))
+			{
+				vec3 addvec;
+				cross_product(&addvec, &camera.cameraDir, &camera.camUp);
+				normalize_vec3(&addvec);
+				scale_vec3(&addvec, &addvec, camSpeed);
+				neg_vec3(&camera.cameraPos, &camera.cameraPos, &addvec);
+			}
+			if (key_down(GLFW_KEY_D))
+			{
+				vec3 addvec;
+				cross_product(&addvec, &camera.cameraDir, &camera.camUp);
+				normalize_vec3(&addvec);
+				scale_vec3(&addvec, &addvec, camSpeed);
+				add_vec3(&camera.cameraPos, &camera.cameraPos, &addvec);
+			}
+			if (key_down(GLFW_KEY_S))
+			{
+				vec3 addvec;
+				scale_vec3(&addvec, &camera.cameraDir, -camSpeed);
+				add_vec3(&camera.cameraPos, &camera.cameraPos, &addvec);;
+			}
+			hotload_shaders(dt);
+			if (!mouse_init)
+			{
+				update_camera(&camera, in.mousepos, in.mousepos);
+			}
+			else
+			{
+				update_camera(&camera, in.mousepos, in.lastMousepos);
+			}
+			update_keys();
+
+		}
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -788,20 +807,95 @@ int main()
 
 		render(&rend, teapot, pos, pos, 0.5f, cube, pro, &camera, 0);
 
-		if (!mouse_init)
-		{
-			update_camera(&camera, in.mousepos, in.mousepos);
-			
-		}
-		else
-		{
-			update_camera(&camera, in.mousepos, in.lastMousepos);
-		}
-		update_keys();
 		glfwSwapBuffers(window);
 	}
 	dispose_model_memory();
 	dipose_inputs();
 	glfwTerminate();
 	return 1;
+}
+
+void hotload_shaders(double dt)
+{
+	static double time = 0;
+	time += dt;
+	if(time > 2.0)
+	{
+		time = 0;
+		if (shader_cache[SHA_PROG_NO_UV].numAttribs != 0 && shader_cache[SHA_PROG_NO_UV].progId != 0)
+		{
+			FILETIME newTimeFrag = Win32GetLastWriteTime(txt_file_names[model_frag]);
+			FILETIME newTimeVert = Win32GetLastWriteTime(txt_file_names[model_vert]);
+			uint success = 0;
+			do
+			{
+				printf("LOADING SHADERS \n %s %s \n", txt_file_names[model_frag], txt_file_names[model_vert]);
+				if (CompareFileTime(&LASTWRITES[model_frag], &newTimeFrag) || CompareFileTime(&LASTWRITES[model_vert], &newTimeVert))
+				{
+					LASTWRITES[model_frag] = newTimeFrag;
+					LASTWRITES[model_vert] = newTimeVert;
+
+					ShaderHandle tempsha = { 0 };
+
+					char* vert_s = load_file(vert_sha, NULL);
+					uint vertID = soft_compile_shader(GL_VERTEX_SHADER, vert_s);
+					free(vert_s);
+					if (vertID == INVALIDSHADER)
+					{
+						break;
+					}
+
+					char* frag_s = load_file(frag_sha, NULL);
+					uint fragID = soft_compile_shader(GL_FRAGMENT_SHADER, frag_s);
+					free(frag_s);
+					if (fragID == INVALIDSHADER)
+					{
+						break;
+					}
+					tempsha.progId = glCreateProgram();
+					glAttachShader(tempsha.progId, vertID);
+					glAttachShader(tempsha.progId, fragID);
+
+					add_attribute(&tempsha, "vertexPosition");
+					add_attribute(&tempsha, "uv");
+					add_attribute(&tempsha, "normal");
+
+
+					uint suc = soft_link_shader(&tempsha, vertID, fragID);
+					if (!suc) break;
+					use_shader(&tempsha);
+					unuse_shader(&tempsha);
+					success = 1;
+					shader_cache[SHA_PROG_NO_UV] = tempsha;
+				}
+			} while (0);
+			if(!success)
+			{
+				printf("FAILED TO COMPILE SHADERS");
+			}
+		}
+		if (shader_cache[SHA_PROG_UV].numAttribs != 0 && shader_cache[SHA_PROG_UV].progId != 0)
+		{
+			FILETIME newTimeFrag = Win32GetLastWriteTime(txt_file_names[frag_sha]);
+			FILETIME newTimeVert = Win32GetLastWriteTime(txt_file_names[vert_sha]);
+
+			if (CompareFileTime(&LASTWRITES[frag_sha], &newTimeFrag) || CompareFileTime(&LASTWRITES[vert_sha], &newTimeVert))
+			{
+				LASTWRITES[frag_sha] = newTimeFrag;
+				LASTWRITES[vert_sha] = newTimeVert;
+			}
+		}
+		if (shader_cache[LIGHT].numAttribs != 0 && shader_cache[LIGHT].progId != 0)
+		{
+			FILETIME newTimeFrag = Win32GetLastWriteTime(txt_file_names[light_frag]);
+			FILETIME newTimeVert = Win32GetLastWriteTime(txt_file_names[light_vert]);
+
+			if (CompareFileTime(&LASTWRITES[light_frag], &newTimeFrag) || CompareFileTime(&LASTWRITES[light_vert], &newTimeVert))
+			{
+				LASTWRITES[light_frag] = newTimeFrag;
+				LASTWRITES[light_vert] = newTimeVert;
+			}
+		}
+	}
+
 }
