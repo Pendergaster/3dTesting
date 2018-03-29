@@ -569,6 +569,7 @@ int main()
 	glfwSetMouseButtonCallback(window, mouse_button_callback);
 	glfwSetCursorPosCallback(window, cursor_position_callback);
 	glfwSetScrollCallback(window, scroll_callback);
+	uint CURSOR_DISABLED = 1;
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	init_keys();
 
@@ -706,9 +707,9 @@ int main()
 
 
 	mat4 lampRotater = { 0 };
-	vec3 lampAxis = { 1.f, 1.f, 0.f};
-	create_rotate_mat4(&lampRotater, lampAxis, deg_to_rad(0.2f));
-	vec3 oldLightPos = { 10.f , 0.f , -10.f };
+	vec3 lampAxis = { 1.f, 0.f, 0.f};
+	create_rotate_mat4(&lampRotater, lampAxis, deg_to_rad(0.01f));
+	vec3 oldLightPos = { 0.f , 5.f , 0.f };
 	
 
 
@@ -732,6 +733,19 @@ int main()
 		if (key_pressed(GLFW_KEY_ESCAPE))
 		{
 			break;
+		}
+		if (key_pressed(GLFW_KEY_ENTER))
+		{
+			if (CURSOR_DISABLED)
+			{
+				CURSOR_DISABLED = 0;
+				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+			}
+			else
+			{
+				CURSOR_DISABLED = 1;
+				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+			}
 		}
 
 		while (accumulator >= dt)//processloop
@@ -766,7 +780,7 @@ int main()
 				add_vec3(&camera.cameraPos, &camera.cameraPos, &addvec);;
 			}
 			hotload_shaders(dt);
-			if (!mouse_init)
+			if (!mouse_init || !CURSOR_DISABLED)
 			{
 				update_camera(&camera, in.mousepos, in.mousepos);
 			}
@@ -781,13 +795,13 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
-		
+
 #ifdef reee
 		vec4 tempL = { oldLightPos.x,oldLightPos.y,oldLightPos.z,1.f };
 		vec4 resL = { 0 };
 		mat4_mult_vec4(&resL, &lampRotater, &tempL);
 		vec3 newlightPos = { resL.x,resL.y,resL.z };
-		
+
 		oldLightPos = newlightPos;
 
 		//render_boxes(&shader, VBO,VAO,projectionLOC,modelLOC,viewLOC,oldLightPos,&camera,&projection);
@@ -803,28 +817,32 @@ int main()
 		vec3 pos = { 0 };
 
 		Material cube = { 0 };
-		vec3 diff = { 1.0f, 0.5f, 0.31f };
-		vec3 spec = { 0.5f, 0.5f, 0.5f };
+		vec3 diff = {  1.f , 0.f , 0.f };
+		vec3 spec = { 1.f , 0.f , 0.f };
 		float shine = 32.0f;
 
 		cube.diffuse = diff;
 		cube.specular = spec;
 		cube.shininess = shine;
-		
+
 
 
 		LightValues pro = { 0 };
-		vec3 ambL = { .2f, .2f, .2f };
+		//vec3 lightcolor = { sinf(0.2f* glfwGetTime()),sinf( 0.7f* glfwGetTime()), sinf(1.3f * glfwGetTime()) };
 		vec3 diffL = { 0.5f, 0.5f, 0.5f };
-		vec3 specL = { 1.f, 1.f, 1.f };
+		//scale_vec3(&diffL, &diffL, 0.5f);
+		vec3 ambL = { 1.0f, 1.0f, 1.0f };
+		//scale_vec3(&ambL, &ambL, 0.2f);
+		vec3 specL = { 1.0f, 1.0f, 1.0f };
+
 		pro.position = newlightPos;
 		pro.ambient = ambL;
 		pro.diffuse = diffL;
 		pro.specular = specL;
 
 		pro.constant = 1.f;
-		pro.linear = 0.1f;
-		pro.quadratic = 0.032f;
+		pro.linear = 0.14f;
+		pro.quadratic = 0.07f;
 
 		render(&rend, teapot, pos, pos, 0.5f, cube, pro, &camera, 0);
 
@@ -842,7 +860,7 @@ void hotload_shaders(double dt)
 {
 	static double time = 0;
 	time += dt;
-	if (time > 2.0)
+	if (time > 0.5)
 	{
 		time = 0;
 		if (shader_cache[SHA_PROG_NO_UV].numAttribs != 0 && shader_cache[SHA_PROG_NO_UV].progId != 0)
@@ -888,6 +906,7 @@ void hotload_shaders(double dt)
 					use_shader(&tempsha);
 					unuse_shader(&tempsha);
 					success = 1;
+					dispose_shader(&shader_cache[SHA_PROG_NO_UV]);
 					shader_cache[SHA_PROG_NO_UV] = tempsha;
 				} while (0);
 				if (!success)
@@ -946,6 +965,7 @@ void hotload_shaders(double dt)
 					unuse_shader(&tempsha);
 					success = 1;
 					shader_cache[SHA_PROG_UV] = tempsha;
+					dispose_shader(&shader_cache[SHA_PROG_UV]);
 
 				} while (0);
 				if (!success)
@@ -1003,7 +1023,9 @@ void hotload_shaders(double dt)
 					use_shader(&tempsha);
 					unuse_shader(&tempsha);
 					success = 1;
+					dispose_shader(&shader_cache[SHA_PROG_UV]);
 					shader_cache[LIGHT] = tempsha;
+					
 
 				} while (0);
 				if (!success)

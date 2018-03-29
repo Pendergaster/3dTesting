@@ -189,6 +189,7 @@ inline void render(Renderer* rend,const int model,const vec3 pos, const vec3 rot
 		glBindBuffer(GL_ARRAY_BUFFER, rend->UvBO);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(vec2) * m->vertexsize, NULL, GL_DYNAMIC_DRAW);
 		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vec3) * m->vertexsize, m->texcoordbuffer);
+		glCheckError();
 
 		mat4 model = { 0 };
 		identity(&model);
@@ -205,14 +206,17 @@ inline void render(Renderer* rend,const int model,const vec3 pos, const vec3 rot
 
 		//aseta materiaalit
 		set_vec3(withTex, "material.diffuse", &material.diffuse);
+		glCheckError();
 		set_vec3(withTex, "material.specular", &material.specular);
 		set_uniform_float(withTex, "material.shininess", material.shininess);
+		glCheckError();
 
 		//set light values
 		set_vec3(withTex, "light.position", &light.position);
 		set_vec3(withTex, "light.ambient", &light.ambient);
 		set_vec3(withTex, "light.diffuse", &light.diffuse);
 		set_vec3(withTex, "light.specular", &light.specular);
+		glCheckError();
 
 		set_uniform_float(withTex, "light.constant", light.constant);
 		set_uniform_float(withTex, "light.linear", light.linear);
@@ -261,21 +265,27 @@ inline void render(Renderer* rend,const int model,const vec3 pos, const vec3 rot
 		use_shader(noTex);
 
 		set_vec3(noTex, "ViewPos", &camera->cameraPos);
+		glCheckError();
 
 		//aseta materiaalit
 		set_vec3(noTex, "material.diffuse", &material.diffuse);		//väri vec3
+		glCheckError();
+
 		set_vec3(noTex, "material.specular", &material.specular);	
 		set_uniform_float(noTex, "material.shininess", material.shininess);
+		glCheckError();
 
 		//set light values
 		set_vec3(noTex, "light.position", &light.position);
 		set_vec3(noTex, "light.ambient", &light.ambient);
 		set_vec3(noTex, "light.diffuse", &light.diffuse);
 		set_vec3(noTex, "light.specular", &light.specular);
+		glCheckError();
 
 		set_uniform_float(noTex, "light.constant", light.constant);
 		set_uniform_float(noTex, "light.linear", light.linear);
 		set_uniform_float(noTex, "light.quadratic", light.quadratic);
+		glCheckError();
 
 		//vec4 color = { 1,1,1,1 };
 		//set_vec4(&rend->noTex, "Color", &color);
@@ -286,10 +296,10 @@ inline void render(Renderer* rend,const int model,const vec3 pos, const vec3 rot
 
 		perspective(&projection, deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 100.f);
 		glUniformMatrix4fv(rend->projectionLOCnoTex, 1, GL_FALSE, (GLfloat*)projection.mat);
+		glUniformMatrix4fv(rend->modelLOCnoTex, 1, GL_FALSE, (GLfloat*)model.mat);
 		glBindVertexArray(rend->VaoNoTex);
 
 
-		glUniformMatrix4fv(rend->modelLOCnoTex, 1, GL_FALSE, (GLfloat*)model.mat);
 		glDrawArrays(GL_TRIANGLES, 0, m->vertexsize);
 
 		unuse_shader(noTex);
