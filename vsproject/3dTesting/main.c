@@ -22,6 +22,27 @@ FILETIME Win32GetLastWriteTime(const char* path)
 
 	return time;
 }
+static int MEMTRACK = 0;
+
+inline void* DEBUG_MALLOC(int size)
+{
+	MEMTRACK++;
+	return malloc(size);
+}
+
+inline void* DEBUG_CALLOC(int COUNT, int SIZE)
+{
+	MEMTRACK++;
+	return calloc(COUNT, SIZE);
+}
+
+#define MEM_DEBUG
+#ifdef  MEM_DEBUG
+#define free(PTR) do{ free(PTR); MEMTRACK--;}while(0)
+#define malloc(SIZE) DEBUG_MALLOC(SIZE)
+#define calloc(COUNT,SIZE) DEBUG_CALLOC(COUNT,SIZE)
+#endif //  MEM_DEBUG
+
 
 typedef struct
 {
@@ -775,7 +796,7 @@ int main()
 		render_light(light, &camera, &projection, newlightPos);
 
 
-		printf("%.2f %.2f %.2f \n", newlightPos.x, newlightPos.y, newlightPos.z);
+		//printf("%.2f %.2f %.2f \n", newlightPos.x, newlightPos.y, newlightPos.z);
 		//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 		glCheckError();
@@ -812,6 +833,8 @@ int main()
 	dispose_model_memory();
 	dipose_inputs();
 	glfwTerminate();
+	printf("MEMTRACK = %d", MEMTRACK);
+	assert(MEMTRACK == 0);
 	return 1;
 }
 
@@ -819,21 +842,77 @@ void hotload_shaders(double dt)
 {
 	static double time = 0;
 	time += dt;
-	if(time > 2.0)
+	if (time > 2.0)
 	{
 		time = 0;
 		if (shader_cache[SHA_PROG_NO_UV].numAttribs != 0 && shader_cache[SHA_PROG_NO_UV].progId != 0)
 		{
 			FILETIME newTimeFrag = Win32GetLastWriteTime(txt_file_names[model_frag]);
 			FILETIME newTimeVert = Win32GetLastWriteTime(txt_file_names[model_vert]);
-			uint success = 0;
-			do
+			if (CompareFileTime(&LASTWRITES[model_frag], &newTimeFrag) || CompareFileTime(&LASTWRITES[model_vert], &newTimeVert))
 			{
+				uint success = 0;
 				printf("LOADING SHADERS \n %s %s \n", txt_file_names[model_frag], txt_file_names[model_vert]);
-				if (CompareFileTime(&LASTWRITES[model_frag], &newTimeFrag) || CompareFileTime(&LASTWRITES[model_vert], &newTimeVert))
+				do
 				{
 					LASTWRITES[model_frag] = newTimeFrag;
 					LASTWRITES[model_vert] = newTimeVert;
+
+					ShaderHandle tempsha = { 0 };
+
+					char* vert_s = load_file(model_vert, NULL);
+					uint vertID = soft_compile_shader(GL_VERTEX_SHADER, vert_s);
+					free(vert_s);
+					if (vertID == INVALIDSHADER)
+					{
+						break;
+					}
+
+					char* frag_s = load_file(model_frag, NULL);
+					uint fragID = soft_compile_shader(GL_FRAGMENT_SHADER, frag_s);
+					free(frag_s);
+					if (fragID == INVALIDSHADER)
+					{
+						break;
+					}
+					tempsha.progId = glCreateProgram();
+					glAttachShader(tempsha.progId, vertID);
+					glAttachShader(tempsha.progId, fragID);
+
+					add_attribute(&tempsha, "vertexPosition");
+					add_attribute(&tempsha, "normal");
+
+
+					uint suc = soft_link_shader(&tempsha, vertID, fragID);
+					if (!suc) break;
+					use_shader(&tempsha);
+					unuse_shader(&tempsha);
+					success = 1;
+					shader_cache[SHA_PROG_NO_UV] = tempsha;
+				} while (0);
+				if (!success)
+				{
+					printf("FAILED TO COMPILE SHADERS");
+				}
+			}
+		}
+		if (shader_cache[SHA_PROG_UV].numAttribs != 0 && shader_cache[SHA_PROG_UV].progId != 0)
+		{
+			FILETIME newTimeFrag = Win32GetLastWriteTime(txt_file_names[frag_sha]);
+			FILETIME newTimeVert = Win32GetLastWriteTime(txt_file_names[vert_sha]);
+
+			if (CompareFileTime(&LASTWRITES[frag_sha], &newTimeFrag) || CompareFileTime(&LASTWRITES[vert_sha], &newTimeVert))
+			{
+				LASTWRITES[frag_sha] = newTimeFrag;
+				LASTWRITES[vert_sha] = newTimeVert;
+
+				uint success = 0;
+				do
+				{
+					printf("LOADING SHADERS \n %s %s \n", txt_file_names[model_frag], txt_file_names[model_vert]);
+
+					LASTWRITES[frag_sha] = newTimeFrag;
+					LASTWRITES[vert_sha] = newTimeVert;
 
 					ShaderHandle tempsha = { 0 };
 
@@ -866,23 +945,14 @@ void hotload_shaders(double dt)
 					use_shader(&tempsha);
 					unuse_shader(&tempsha);
 					success = 1;
-					shader_cache[SHA_PROG_NO_UV] = tempsha;
-				}
-			} while (0);
-			if(!success)
-			{
-				printf("FAILED TO COMPILE SHADERS");
-			}
-		}
-		if (shader_cache[SHA_PROG_UV].numAttribs != 0 && shader_cache[SHA_PROG_UV].progId != 0)
-		{
-			FILETIME newTimeFrag = Win32GetLastWriteTime(txt_file_names[frag_sha]);
-			FILETIME newTimeVert = Win32GetLastWriteTime(txt_file_names[vert_sha]);
+					shader_cache[SHA_PROG_UV] = tempsha;
 
-			if (CompareFileTime(&LASTWRITES[frag_sha], &newTimeFrag) || CompareFileTime(&LASTWRITES[vert_sha], &newTimeVert))
-			{
-				LASTWRITES[frag_sha] = newTimeFrag;
-				LASTWRITES[vert_sha] = newTimeVert;
+				} while (0);
+				if (!success)
+				{
+					printf("FAILED TO COMPILE SHADERS");
+				}
+
 			}
 		}
 		if (shader_cache[LIGHT].numAttribs != 0 && shader_cache[LIGHT].progId != 0)
@@ -894,8 +964,54 @@ void hotload_shaders(double dt)
 			{
 				LASTWRITES[light_frag] = newTimeFrag;
 				LASTWRITES[light_vert] = newTimeVert;
+
+				uint success = 0;
+				do
+				{
+					printf("LOADING SHADERS \n %s %s \n", txt_file_names[light_frag], txt_file_names[light_vert]);
+
+					LASTWRITES[light_frag] = newTimeFrag;
+					LASTWRITES[light_vert] = newTimeVert;
+
+					ShaderHandle tempsha = { 0 };
+
+					char* vert_s = load_file(light_vert, NULL);
+					uint vertID = soft_compile_shader(GL_VERTEX_SHADER, vert_s);
+					free(vert_s);
+					if (vertID == INVALIDSHADER)
+					{
+						break;
+					}
+
+					char* frag_s = load_file(light_frag, NULL);
+					uint fragID = soft_compile_shader(GL_FRAGMENT_SHADER, frag_s);
+					free(frag_s);
+					if (fragID == INVALIDSHADER)
+					{
+						break;
+					}
+					tempsha.progId = glCreateProgram();
+					glAttachShader(tempsha.progId, vertID);
+					glAttachShader(tempsha.progId, fragID);
+
+					add_attribute(&tempsha, "vertexPosition");
+
+
+
+					uint suc = soft_link_shader(&tempsha, vertID, fragID);
+					if (!suc) break;
+					use_shader(&tempsha);
+					unuse_shader(&tempsha);
+					success = 1;
+					shader_cache[LIGHT] = tempsha;
+
+				} while (0);
+				if (!success)
+				{
+					printf("FAILED TO COMPILE SHADERS");
+				}
 			}
+
 		}
 	}
-
 }
