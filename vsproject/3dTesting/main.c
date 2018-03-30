@@ -11,6 +11,8 @@
 #include <stdarg.h>
 #include "source\smallGenericDynArray.h"
 
+#include <nuklear.h>
+#include <nuklear_glfw_gl3.h>
 #include <Windows.h>
 FILETIME Win32GetLastWriteTime(const char* path)
 {
@@ -49,8 +51,8 @@ typedef struct
 	int a;
 } myree;
 #include "source\camera.c"
-#define SCREENWIDHT 800
-#define SCREENHEIGHT 600
+#define SCREENWIDHT 1200
+#define SCREENHEIGHT 800
 
 #define FATALERROR assert(0);
 #define FATALERRORMESSAGE(STRING) printf(STRING); assert(0);
@@ -509,6 +511,15 @@ float vertices[] = {
 
 #include "source/modelrendering.c"
 void hotload_shaders(double dt);
+#define MAX_VERTEX_BUFFER 512 * 1024
+#define MAX_ELEMENT_BUFFER 128 * 1024
+static void error_callback(int e, const char *d)
+{
+	printf("Error %d: %s\n", e, d);
+}
+
+
+#include "source\nuklear_util.c"
 int main()
 {
 
@@ -565,6 +576,7 @@ int main()
 	}
 
 	glViewport(0, 0, SCREENWIDHT, SCREENHEIGHT);
+	glfwSetErrorCallback(error_callback);
 	glfwSetKeyCallback(window, key_callback);
 	glfwSetMouseButtonCallback(window, mouse_button_callback);
 	glfwSetCursorPosCallback(window, cursor_position_callback);
@@ -572,7 +584,16 @@ int main()
 	uint CURSOR_DISABLED = 1;
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	init_keys();
+	struct nk_context *ctx;
+	struct nk_colorf bg;
 
+#if 0
+	ctx = nk_glfw3_init(window, NK_GLFW3_INSTALL_CALLBACKS);
+	{struct nk_font_atlas *atlas;
+	nk_glfw3_font_stash_begin(&atlas);
+	nk_glfw3_font_stash_end(); }
+	bg.r = 0.10f, bg.g = 0.18f, bg.b = 0.24f, bg.a = 1.0f;
+#endif
 #define reee
 #ifdef vanha
 
@@ -708,7 +729,7 @@ int main()
 
 	mat4 lampRotater = { 0 };
 	vec3 lampAxis = { 1.f, 0.f, 0.f};
-	create_rotate_mat4(&lampRotater, lampAxis, deg_to_rad(0.01f));
+	create_rotate_mat4(&lampRotater, lampAxis, deg_to_rad(2.f));
 	vec3 oldLightPos = { 0.f , 5.f , 0.f };
 	
 
@@ -721,15 +742,49 @@ int main()
 	double currentTime = glfwGetTime();
 	double accumulator = 0.0;
 
+	float time[200] = { 0 };
+	const float fpsUpdateRate = 1.0f;
+	float lastTime = 0.f;
+	float currentFps = 0.f;
+	int index = 0;
+	float currentFrameTime = 0.f;
+	const float frametimeUpTime = 0.5f;
+	float frameTimer = 0.f;
+	float updating = 0.f;
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
-
+#if 0	
+		nk_glfw3_new_frame();
+#endif
+	
 		double newTime = glfwGetTime();
 
 		double frameTime = newTime - currentTime;
 		currentTime = newTime;
 		accumulator += frameTime;
+
+		time[index++] = (float)newTime - lastTime;
+		if (index >= 200)index = 0;
+		frameTimer += (float)newTime - lastTime;
+		if(frameTimer > frametimeUpTime)
+		{
+			frameTimer = 0;
+			currentFrameTime = (float)newTime - lastTime;
+		}
+		updating += newTime - lastTime;
+		lastTime = (float)newTime;
+		if (updating > fpsUpdateRate)
+		{
+			float add = 0;
+			for (int i = 0; i < 200; i++)
+			{
+				add += time[i];
+			}
+			currentFps = 1.f / (add / 200.f);
+			updating = 0;
+		}
+
 		if (key_pressed(GLFW_KEY_ESCAPE))
 		{
 			break;
@@ -747,7 +802,11 @@ int main()
 				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 			}
 		}
+#if 0
 
+		show_engine_stats(ctx,currentFps,currentFrameTime);
+		overview(ctx);
+#endif
 		while (accumulator >= dt)//processloop
 		{
 			accumulator -= dt;
@@ -790,6 +849,12 @@ int main()
 			}
 			update_keys();
 
+		vec4 tempL = { oldLightPos.x,oldLightPos.y,oldLightPos.z,1.f };
+		vec4 resL = { 0 };
+		mat4_mult_vec4(&resL, &lampRotater, &tempL);
+		vec3 newlightPos = { resL.x,resL.y,resL.z };
+
+		oldLightPos = newlightPos;
 		}
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -797,17 +862,11 @@ int main()
 
 
 #ifdef reee
-		vec4 tempL = { oldLightPos.x,oldLightPos.y,oldLightPos.z,1.f };
-		vec4 resL = { 0 };
-		mat4_mult_vec4(&resL, &lampRotater, &tempL);
-		vec3 newlightPos = { resL.x,resL.y,resL.z };
-
-		oldLightPos = newlightPos;
 
 		//render_boxes(&shader, VBO,VAO,projectionLOC,modelLOC,viewLOC,oldLightPos,&camera,&projection);
 #endif
 		perspective(&projection, deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 100.f);
-		render_light(light, &camera, &projection, newlightPos);
+		render_light(light, &camera, &projection, oldLightPos);
 
 
 		//printf("%.2f %.2f %.2f \n", newlightPos.x, newlightPos.y, newlightPos.z);
@@ -817,8 +876,8 @@ int main()
 		vec3 pos = { 0 };
 
 		Material cube = { 0 };
-		vec3 diff = {  1.f , 0.f , 0.f };
-		vec3 spec = { 1.f , 0.f , 0.f };
+		vec3 diff = {  0.4f , 0.3f , 0.2f };
+		vec3 spec = { 0.3f , 0.4f , 0.1f };
 		float shine = 32.0f;
 
 		cube.diffuse = diff;
@@ -835,7 +894,7 @@ int main()
 		//scale_vec3(&ambL, &ambL, 0.2f);
 		vec3 specL = { 1.0f, 1.0f, 1.0f };
 
-		pro.position = newlightPos;
+		pro.position = oldLightPos;
 		pro.ambient = ambL;
 		pro.diffuse = diffL;
 		pro.specular = specL;
@@ -845,6 +904,11 @@ int main()
 		pro.quadratic = 0.07f;
 
 		render(&rend, teapot, pos, pos, 0.5f, cube, pro, &camera, 0);
+#if 0
+		render_nuklear();
+#endif
+
+
 
 		glfwSwapBuffers(window);
 	}

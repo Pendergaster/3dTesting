@@ -79,8 +79,8 @@ inline void init_renderer(Renderer *rend)
 		link_shader(shader, vertID, fragID);
 
 		use_shader(shader);
-		vec3 te = { 0 };
-		set_vec3(shader, "material.diffuse", &te);
+		/*vec3 te = { 0 };
+		set_vec3(shader, "material.diffuse", &te);*/
 		unuse_shader(shader);
 	}
 
@@ -97,14 +97,14 @@ inline void init_renderer(Renderer *rend)
 	glBindVertexArray(vaoNoTex);
 
 	glBindBuffer(GL_ARRAY_BUFFER, VertBo);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 
 	glBindBuffer(GL_ARRAY_BUFFER, NormBo);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	//glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	glBindVertexArray(0);
 
@@ -244,15 +244,23 @@ inline void render(Renderer* rend,const int model,const vec3 pos, const vec3 rot
 	// käytä normaalia
 	else
 	{
+	/*	for (int i = 0; i < m->vertexsize; i++)
+		{
+			printf("%f , %f , %f\n", m->normalbuffer[i].x, m->normalbuffer[i].y, m->normalbuffer[i].z);
+		}*/
+		static int test = 0;
+		//printf("test %d \n", test++);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindBuffer(GL_ARRAY_BUFFER, rend->VertBO);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * m->vertexsize, NULL, GL_DYNAMIC_DRAW);
 		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vec3) * m->vertexsize, m->vertexbuffer);
 
 		glBindBuffer(GL_ARRAY_BUFFER, rend->NormBO);
+		glCheckError();
 		glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * m->vertexsize, NULL, GL_DYNAMIC_DRAW);
+		glCheckError();
 		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vec3) * m->vertexsize, m->normalbuffer);
-
-
+		glCheckError();
 		mat4 model = { 0 };
 		identity(&model);
 		translate_mat4(&model, &model, pos);
@@ -267,6 +275,7 @@ inline void render(Renderer* rend,const int model,const vec3 pos, const vec3 rot
 		set_vec3(noTex, "ViewPos", &camera->cameraPos);
 		glCheckError();
 
+		//printf("CAMPOS %f , %f , %f\n", camera->cameraPos.x, camera->cameraPos.y, camera->cameraPos.z);
 		//aseta materiaalit
 		set_vec3(noTex, "material.diffuse", &material.diffuse);		//väri vec3
 		glCheckError();
@@ -287,8 +296,17 @@ inline void render(Renderer* rend,const int model,const vec3 pos, const vec3 rot
 		set_uniform_float(noTex, "light.quadratic", light.quadratic);
 		glCheckError();
 
-		//vec4 color = { 1,1,1,1 };
-		//set_vec4(&rend->noTex, "Color", &color);
+		vec3 dir = { -0.2f, -1.0f, -0.3f };
+		vec3 ambient = { 1.0f, 1.0f, 1.0f };
+		vec3 diff = { 0.5f, 0.5f, 0.5f };
+		vec3 spec = { 1.f, 1.f, 1.f };
+		set_vec3(noTex, "glight.direction", &dir);
+		set_vec3(noTex, "glight.ambient", &ambient);
+		set_vec3(noTex, "glight.diffuse", &diff);
+		set_vec3(noTex, "glight.specular", &spec);
+		glCheckError();
+
+	
 
 		glUniformMatrix4fv(rend->viewLOCnoTex, 1, GL_FALSE, (GLfloat*)camera->view.mat);
 
