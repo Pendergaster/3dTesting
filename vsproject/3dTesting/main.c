@@ -587,13 +587,13 @@ int main()
 	struct nk_context *ctx;
 	struct nk_colorf bg;
 
-#if 0
+#
 	ctx = nk_glfw3_init(window, NK_GLFW3_INSTALL_CALLBACKS);
 	{struct nk_font_atlas *atlas;
 	nk_glfw3_font_stash_begin(&atlas);
 	nk_glfw3_font_stash_end(); }
 	bg.r = 0.10f, bg.g = 0.18f, bg.b = 0.24f, bg.a = 1.0f;
-#endif
+
 #define reee
 #ifdef vanha
 
@@ -754,9 +754,9 @@ int main()
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
-#if 0	
+
 		nk_glfw3_new_frame();
-#endif
+
 	
 		double newTime = glfwGetTime();
 
@@ -802,11 +802,10 @@ int main()
 				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 			}
 		}
-#if 0
 
 		show_engine_stats(ctx,currentFps,currentFrameTime);
 		overview(ctx);
-#endif
+		calculator(ctx);
 		while (accumulator >= dt)//processloop
 		{
 			accumulator -= dt;
@@ -836,7 +835,7 @@ int main()
 			{
 				vec3 addvec;
 				scale_vec3(&addvec, &camera.cameraDir, -camSpeed);
-				add_vec3(&camera.cameraPos, &camera.cameraPos, &addvec);;
+				add_vec3(&camera.cameraPos, &camera.cameraPos, &addvec);
 			}
 			hotload_shaders(dt);
 			if (!mouse_init || !CURSOR_DISABLED)
@@ -888,9 +887,9 @@ int main()
 
 		LightValues pro = { 0 };
 		//vec3 lightcolor = { sinf(0.2f* glfwGetTime()),sinf( 0.7f* glfwGetTime()), sinf(1.3f * glfwGetTime()) };
-		vec3 diffL = { 0.5f, 0.5f, 0.5f };
+		vec3 diffL = { 0.8f, 0.8f, 0.8f };
 		//scale_vec3(&diffL, &diffL, 0.5f);
-		vec3 ambL = { 1.0f, 1.0f, 1.0f };
+		vec3 ambL = { 0.05f, 0.05f, 0.05f };
 		//scale_vec3(&ambL, &ambL, 0.2f);
 		vec3 specL = { 1.0f, 1.0f, 1.0f };
 
@@ -900,13 +899,13 @@ int main()
 		pro.specular = specL;
 
 		pro.constant = 1.f;
-		pro.linear = 0.14f;
-		pro.quadratic = 0.07f;
+		pro.linear = 0.001f;
+		pro.quadratic = 0.002f;
 
 		render(&rend, teapot, pos, pos, 0.5f, cube, pro, &camera, 0);
-#if 0
+
 		render_nuklear();
-#endif
+
 
 
 

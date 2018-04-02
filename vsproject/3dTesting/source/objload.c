@@ -10,6 +10,9 @@ typedef struct
 	uint	vertexsize;
 } ModelHandle;
 
+
+
+
 ModelHandle model_cache[maxmodelfiles] = { 0 };
 
 static vec3* vertexes = NULL;

@@ -270,6 +270,7 @@ inline void render(Renderer* rend,const int model,const vec3 pos, const vec3 rot
 
 		scale_mat4(&model, scale);
 		ShaderHandle* noTex = get_shader(rend->noTex);
+		glBindVertexArray(rend->VaoNoTex);
 		use_shader(noTex);
 
 		set_vec3(noTex, "ViewPos", &camera->cameraPos);
@@ -297,9 +298,9 @@ inline void render(Renderer* rend,const int model,const vec3 pos, const vec3 rot
 		glCheckError();
 
 		vec3 dir = { -0.2f, -1.0f, -0.3f };
-		vec3 ambient = { 1.0f, 1.0f, 1.0f };
-		vec3 diff = { 0.5f, 0.5f, 0.5f };
-		vec3 spec = { 1.f, 1.f, 1.f };
+		vec3 ambient = { 0.05f, 0.05f, 0.05f };
+		vec3 diff = { 0.4f, 0.4f, 0.4f };
+		vec3 spec = { 0.5f, 0.5f, 0.5f };
 		set_vec3(noTex, "glight.direction", &dir);
 		set_vec3(noTex, "glight.ambient", &ambient);
 		set_vec3(noTex, "glight.diffuse", &diff);
@@ -315,8 +316,8 @@ inline void render(Renderer* rend,const int model,const vec3 pos, const vec3 rot
 		perspective(&projection, deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 100.f);
 		glUniformMatrix4fv(rend->projectionLOCnoTex, 1, GL_FALSE, (GLfloat*)projection.mat);
 		glUniformMatrix4fv(rend->modelLOCnoTex, 1, GL_FALSE, (GLfloat*)model.mat);
-		glBindVertexArray(rend->VaoNoTex);
-
+	/*	glEnableVertexAttribArray(0);
+		glEnableVertexAttribArray(1);*/
 
 		glDrawArrays(GL_TRIANGLES, 0, m->vertexsize);
 
