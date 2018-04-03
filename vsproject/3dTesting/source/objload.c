@@ -4,10 +4,12 @@
 
 typedef struct
 {
-	vec3*	vertexbuffer;
-	vec3*	normalbuffer;
-	vec2*	texcoordbuffer;
 	uint	vertexsize;
+
+
+	uint	vao;
+	uint	vbo;
+	uint	nbo;
 } ModelHandle;
 
 
@@ -25,14 +27,16 @@ static int* IndexBuffer = NULL;
 ModelHandle load_model(const int model)
 {
 
-	if(model_cache[model].vertexbuffer != NULL)
+	if(model_cache[model].vbo != 0)
 	{
 		return model_cache[model];
 	}
-
+	/*ShaderHandle * s = &shader_cache[vert_sha]*/;
+	/*const char* filename = shader_dile*/
 	int size = 0;
 	//char* mod = load_file_from_source(model_file_names[model],&size);
 	FILE* file = fopen(/*model_file_names[model]*/ "models/teapot.obj", "r");
+	printf("loading model = %s \n", model_file_names[model]);
 	assert(file);
 	char buff[255];
 
@@ -165,49 +169,73 @@ ModelHandle load_model(const int model)
 
 
 
-
-
-
-
-
-	/*	index = IndexBuffer[i++];
-		outVertBuffer[vertsize++] = vertexes[index - 1];
-
-		index = IndexBuffer[i++];
-		outVertBuffer[vertsize++] = vertexes[index - 1];
-
-
-			index = IndexBuffer[i++];
-			outTextCoordBuffer[uvsize++] = texturecoords[index - 1];
-
-			index = IndexBuffer[i++];
-			outTextCoordBuffer[uvsize++] = texturecoords[index - 1];
-
-		index = IndexBuffer[i++];
-		outNormalBuffer[normalsize++] = normals[index - 1];		
-
-		index = IndexBuffer[i++];
-		outNormalBuffer[normalsize++] = normals[index - 1];*/
 	}
 
 
 
-	model_cache[model].vertexbuffer = outVertBuffer;
-	model_cache[model].normalbuffer = outNormalBuffer;
-	model_cache[model].texcoordbuffer = outTextCoordBuffer;
+
+
+
+	uint VertBo, NormBo, vao;
+	glGenBuffers(1, &VertBo);
+	glGenBuffers(1, &NormBo);
+	//glGenBuffers(1, &UvOB);
+	glGenVertexArrays(1, &vao);
+
+	glCheckError();
+
+	/* with texture*/
+	glBindVertexArray(vao);
+
+	glBindBuffer(GL_ARRAY_BUFFER, VertBo);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+
+	/*glBindBuffer(GL_ARRAY_BUFFER, UvOB);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(1);*/
+
+	glBindBuffer(GL_ARRAY_BUFFER, NormBo);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(1);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	glBindVertexArray(0);
+
+	glCheckError();
+
+
+	glBindBuffer(GL_ARRAY_BUFFER, VertBo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * vertsize, NULL, GL_STATIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vec3) * vertsize, outVertBuffer);
+	glCheckError();
+
+
+	glBindBuffer(GL_ARRAY_BUFFER, NormBo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) *vertsize, NULL, GL_STATIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vec3) *vertsize, outNormalBuffer);
+	glCheckError();
+	
+	model_cache[model].vbo = VertBo;
+	model_cache[model].nbo = NormBo;
+	model_cache[model].vao = vao;
 	model_cache[model].vertexsize = vertsize;
+	
+	free(outVertBuffer); // handle to all memory
+
 	return	model_cache[model];
 }
 
 void dispose_model_memory()
 {
 	free(vertexes);
-	for (int i = 0; i < maxmodelfiles; i++)
-	{
-		//vertex buffer on pää handle modelin muistiin, kaikki muu muisti on sen perässä
-		if (model_cache[i].vertexbuffer != NULL)
-		{
-			free(model_cache[i].vertexbuffer);
-		}
-	}
+	//for (int i = 0; i < maxmodelfiles; i++)
+	//{
+	//	//vertex buffer on pää handle modelin muistiin, kaikki muu muisti on sen perässä
+	//	if (model_cache[i].vertexbuffer != NULL)
+	//	{
+	//		free(model_cache[i].vertexbuffer);
+	//	}
+	//}
 }

@@ -211,7 +211,7 @@ static const char* pic_file_names[] = {
 	JPG_FILES(GENERATE_STRINGJPG)
 };
 static const char* model_file_names[] = {
-	GENERATE_MODEL_STRING(GENERATE_STRINGMODEL)
+	MODEL_FILES(GENERATE_MODEL_STRING)
 };
 
 enum model_files
@@ -336,7 +336,6 @@ char* load_file_from_source(const char* file, int* size)
 	}
 	return source;
 }
-#include "source\objload.c"
 
 
 GLenum glCheckError_(const char *file, int line)
@@ -363,10 +362,12 @@ GLenum glCheckError_(const char *file, int line)
 }
 #define glCheckError() glCheckError_(__FILE__, __LINE__)
 
+#include "source\objload.c"
 typedef struct
 {
-	uint			vao;
-	uint			vbo;
+	/*uint			vao;
+	uint			vbo;*/
+	ModelHandle		model;
 	uint			shader;
 } Light;
 
@@ -440,27 +441,27 @@ void init_light(Light* l)
 	l->shader = LIGHT;
 
 	TeaPot = load_model(teapot);
-
-	glBindVertexArray(0);
-	glGenVertexArrays(1, &l->vao);
-	glBindVertexArray(l->vao);
-
-
-	glGenBuffers(1, &l->vbo);
-	//glGenBuffers(1, &EBO);
+	l->model = TeaPot;
+	//glBindVertexArray(0);
+	//glGenVertexArrays(1, &l->vao);
+	//glBindVertexArray(l->vao);
 
 
-	glBindBuffer(GL_ARRAY_BUFFER, l->vbo);
-	glBufferData(GL_ARRAY_BUFFER, /*sizeof(verticesBOX)*/sizeof(vec3)*TeaPot.vertexsize, NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, /*sizeof(verticesBOX)*/sizeof(vec3)*TeaPot.vertexsize, /*verticesBOX*/TeaPot.vertexbuffer);
+	//glGenBuffers(1, &l->vbo);
+	////glGenBuffers(1, &EBO);
 
 
-	// we only need to bind to the VBO, the container's VBO's data already contains the correct data.
-	// set the vertex attributes (only position data for our lamp)
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
-	//glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindVertexArray(0);
+	//glBindBuffer(GL_ARRAY_BUFFER, l->vbo);
+	//glBufferData(GL_ARRAY_BUFFER, /*sizeof(verticesBOX)*/sizeof(vec3)*TeaPot.vertexsize, NULL, GL_STATIC_DRAW);
+	//glBufferSubData(GL_ARRAY_BUFFER, 0, /*sizeof(verticesBOX)*/sizeof(vec3)*TeaPot.vertexsize, /*verticesBOX*/TeaPot.vertexbuffer);
+
+
+	//// we only need to bind to the VBO, the container's VBO's data already contains the correct data.
+	//// set the vertex attributes (only position data for our lamp)
+	//glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	//glEnableVertexAttribArray(0);
+	////glBindBuffer(GL_ARRAY_BUFFER, 0);
+	//glBindVertexArray(0);
 
 }
 float vertices[] = {
@@ -806,8 +807,8 @@ int main()
 		show_engine_stats(ctx,currentFps,currentFrameTime);
 		overview(ctx);
 		calculator(ctx);
-		while (accumulator >= dt)//processloop
-		{
+		//while (accumulator >= dt)//processloop
+		//{
 			accumulator -= dt;
 			if (key_down(GLFW_KEY_W))
 			{
@@ -854,7 +855,7 @@ int main()
 		vec3 newlightPos = { resL.x,resL.y,resL.z };
 
 		oldLightPos = newlightPos;
-		}
+		//}
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 

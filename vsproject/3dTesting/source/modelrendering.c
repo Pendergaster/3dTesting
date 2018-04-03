@@ -11,11 +11,11 @@ typedef struct
 {
 	uint			noTex;
 	uint			withTex;
-	uint			VertBO;
-	uint			UvBO;
-	uint			NormBO;
-	uint			VaoTex;
-	uint			VaoNoTex;
+	//uint			VertBO;
+	//uint			UvBO;
+	//uint			NormBO;
+	//uint			VaoTex;
+	//uint			VaoNoTex;
 	uint			modelLOCtex;
 	uint			viewLOCtex;
 	uint			projectionLOCtex;
@@ -84,51 +84,51 @@ inline void init_renderer(Renderer *rend)
 		unuse_shader(shader);
 	}
 
-	uint VertBo,NormBo,UvOB, VAOtex,vaoNoTex;
-	glGenBuffers(1, &VertBo);
-	glGenBuffers(1, &NormBo);
-	glGenBuffers(1, &UvOB);
-	glGenVertexArrays(1, &VAOtex);
-	glGenVertexArrays(1, &vaoNoTex);
+	//uint VertBo,NormBo,UvOB, VAOtex,vaoNoTex;
+	//glGenBuffers(1, &VertBo);
+	//glGenBuffers(1, &NormBo);
+	//glGenBuffers(1, &UvOB);
+	//glGenVertexArrays(1, &VAOtex);
+	//glGenVertexArrays(1, &vaoNoTex);
 
-	glCheckError();
+	//glCheckError();
 
-	/* no texture*/
-	glBindVertexArray(vaoNoTex);
+	///* no texture*/
+	//glBindVertexArray(vaoNoTex);
 
-	glBindBuffer(GL_ARRAY_BUFFER, VertBo);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	//glBindBuffer(GL_ARRAY_BUFFER, VertBo);
+	//glEnableVertexAttribArray(0);
+	//glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 
-	glBindBuffer(GL_ARRAY_BUFFER, NormBo);
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	//glBindBuffer(GL_ARRAY_BUFFER, NormBo);
+	//glEnableVertexAttribArray(1);
+	//glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+
+	////glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	//glBindVertexArray(0);
+
+	//glCheckError();
+	///* with texture*/
+	//glBindVertexArray(VAOtex);
+
+	//glBindBuffer(GL_ARRAY_BUFFER, VertBo);
+	//glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	//glEnableVertexAttribArray(0);
+
+	//glBindBuffer(GL_ARRAY_BUFFER, UvOB);
+	//glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+	//glEnableVertexAttribArray(1);
+
+	//glBindBuffer(GL_ARRAY_BUFFER, NormBo);
+	//glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	//glEnableVertexAttribArray(2);
 
 	//glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	glBindVertexArray(0);
+	//glBindVertexArray(0);
 
-	glCheckError();
-	/* with texture*/
-	glBindVertexArray(VAOtex);
-
-	glBindBuffer(GL_ARRAY_BUFFER, VertBo);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
-
-	glBindBuffer(GL_ARRAY_BUFFER, UvOB);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(1);
-
-	glBindBuffer(GL_ARRAY_BUFFER, NormBo);
-	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(2);
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-	glBindVertexArray(0);
-
-	glCheckError();
+	//glCheckError();
 
 	ShaderHandle* withTex = get_shader(rend->withTex);
 	ShaderHandle* noTex = get_shader(rend->noTex);
@@ -140,12 +140,12 @@ inline void init_renderer(Renderer *rend)
 	rend->viewLOCnoTex = glGetUniformLocation(noTex->progId, "view");
 	rend->projectionLOCnoTex = glGetUniformLocation(noTex->progId, "projection");
 
-	rend->VaoNoTex = vaoNoTex;
-	rend->VaoTex = VAOtex;
+	//rend->VaoNoTex = vaoNoTex;
+	//rend->VaoTex = VAOtex;
 
-	rend->UvBO = UvOB;
-	rend->VertBO = VertBo;
-	rend->NormBO = NormBo;
+	//rend->UvBO = UvOB;
+	//rend->VertBO = VertBo;
+	//rend->NormBO = NormBo;
 
 	assert(!(rend->modelLOCtex == GL_INVALID_INDEX || rend->viewLOCtex == GL_INVALID_INDEX || rend->projectionLOCtex == GL_INVALID_INDEX || rend->modelLOCnoTex == GL_INVALID_INDEX ||
 		rend->viewLOCnoTex == GL_INVALID_INDEX || rend->viewLOCnoTex == GL_INVALID_INDEX || rend->projectionLOCnoTex == GL_INVALID_INDEX));
@@ -175,6 +175,7 @@ inline void render(Renderer* rend,const int model,const vec3 pos, const vec3 rot
 	ModelHandle* m = &model_cache[model];
 
 	//käytä texturoitua
+#if 0
 	if (m->texcoordbuffer != NULL && texid != 0)
 	{
 
@@ -243,24 +244,25 @@ inline void render(Renderer* rend,const int model,const vec3 pos, const vec3 rot
 	}
 	// käytä normaalia
 	else
+#endif
 	{
 	/*	for (int i = 0; i < m->vertexsize; i++)
 		{
 			printf("%f , %f , %f\n", m->normalbuffer[i].x, m->normalbuffer[i].y, m->normalbuffer[i].z);
 		}*/
-		static int test = 0;
-		//printf("test %d \n", test++);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		glBindBuffer(GL_ARRAY_BUFFER, rend->VertBO);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * m->vertexsize, NULL, GL_DYNAMIC_DRAW);
-		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vec3) * m->vertexsize, m->vertexbuffer);
+		//static int test = 0;
+		////printf("test %d \n", test++);
+		//glBindBuffer(GL_ARRAY_BUFFER, 0);
+		//glBindBuffer(GL_ARRAY_BUFFER, rend->VertBO);
+		//glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * m->vertexsize, NULL, GL_DYNAMIC_DRAW);
+		//glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vec3) * m->vertexsize, m->vertexbuffer);
 
-		glBindBuffer(GL_ARRAY_BUFFER, rend->NormBO);
-		glCheckError();
-		glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * m->vertexsize, NULL, GL_DYNAMIC_DRAW);
-		glCheckError();
-		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vec3) * m->vertexsize, m->normalbuffer);
-		glCheckError();
+		//glBindBuffer(GL_ARRAY_BUFFER, rend->NormBO);
+		//glCheckError();
+		//glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * m->vertexsize, NULL, GL_DYNAMIC_DRAW);
+		//glCheckError();
+		//glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vec3) * m->vertexsize, m->normalbuffer);
+		//glCheckError();
 		mat4 model = { 0 };
 		identity(&model);
 		translate_mat4(&model, &model, pos);
@@ -270,7 +272,7 @@ inline void render(Renderer* rend,const int model,const vec3 pos, const vec3 rot
 
 		scale_mat4(&model, scale);
 		ShaderHandle* noTex = get_shader(rend->noTex);
-		glBindVertexArray(rend->VaoNoTex);
+		glBindVertexArray(m->vao);
 		use_shader(noTex);
 
 		set_vec3(noTex, "ViewPos", &camera->cameraPos);
@@ -429,11 +431,12 @@ inline void render_boxes(ShaderHandle* handle, uint VBO, uint VAO, uint projecti
 }
 inline void render_light(Light light, Camera* camera, mat4* projection, vec3 lightpos)
 {
+#if 0
 	ShaderHandle* s = get_shader(light.shader);
-	glBindBuffer(GL_ARRAY_BUFFER, light.vbo);
-	glBufferData(GL_ARRAY_BUFFER,/* sizeof(verticesBOX)*/sizeof(vec3) * TeaPot.vertexsize, NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0,/* sizeof(verticesBOX)*/sizeof(vec3) * TeaPot.vertexsize, TeaPot.vertexbuffer/*verticesBOX*/);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	//glBindBuffer(GL_ARRAY_BUFFER, light.vbo);
+	//glBufferData(GL_ARRAY_BUFFER,/* sizeof(verticesBOX)*/sizeof(vec3) * TeaPot.vertexsize, NULL, GL_STATIC_DRAW);
+	//glBufferSubData(GL_ARRAY_BUFFER, 0,/* sizeof(verticesBOX)*/sizeof(vec3) * TeaPot.vertexsize, TeaPot.vertexbuffer/*verticesBOX*/);
+	//glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	use_shader(s);
 
@@ -442,7 +445,7 @@ inline void render_light(Light light, Camera* camera, mat4* projection, vec3 lig
 	vec3 lightColor = { 1.f,0.5f,1.f };
 	set_vec3(s, "lightColor", &lightColor);
 
-	glBindVertexArray(light.vao);
+	glBindVertexArray(light.model.vao);
 	glCheckError();
 	static float x = 0;
 	//x += 0.01f;
@@ -470,6 +473,7 @@ inline void render_light(Light light, Camera* camera, mat4* projection, vec3 lig
 	glBindVertexArray(0);
 
 	unuse_shader(s);
+#endif
 }
 vec3 modelNormLocsTEMP[4] =
 {
@@ -481,6 +485,7 @@ vec3 modelNormLocsTEMP[4] =
 inline void render_model_normals(uint VBO, uint normalbuffer, ShaderHandle* handle, ModelHandle* model, Camera* camera, vec3 lightpos, uint viewLOC, uint projectionLOC, uint modelLoc, uint VAO, mat4* projection)
 {
 	//bind vertexes
+#if 0
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3)*model->vertexsize, NULL, GL_STATIC_DRAW);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vec3)*model->vertexsize, model->vertexbuffer);
@@ -554,6 +559,7 @@ inline void render_model_normals(uint VBO, uint normalbuffer, ShaderHandle* hand
 	glBindVertexArray(0);
 
 	unuse_shader(handle);
+#endif
 }
 
 //todo push to renderer sort ja älä bindaa vertexejä uudestaan
