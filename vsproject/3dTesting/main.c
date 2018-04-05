@@ -14,6 +14,9 @@
 #include <nuklear.h>
 #include <nuklear_glfw_gl3.h>
 #include <Windows.h>
+
+
+
 FILETIME Win32GetLastWriteTime(const char* path)
 {
 	FILETIME time = { 0 };
@@ -170,6 +173,8 @@ void update_keys()
 		FILE(light_frag)\
 		FILE(model_frag)\
 		FILE(model_vert)\
+		FILE(debug_vert)\
+		FILE(debug_frag)\
 
 
 #define TXT_FILES(FILE) \
@@ -521,6 +526,11 @@ static void error_callback(int e, const char *d)
 
 
 #include "source\nuklear_util.c"
+#include "source\debugrendering.c"
+
+//CREATEDYNAMICARRAY(int, foo)
+//CREATEDYNAMICARRAY(vec2, vert_buffer)
+//CREATEDYNAMICARRAY(int, index_buffer)
 int main()
 {
 

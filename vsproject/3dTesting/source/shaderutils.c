@@ -12,6 +12,7 @@ enum
 	SHA_PROG_UV = 0,
 	SHA_PROG_NO_UV,
 	LIGHT,
+	DEBUG_PROG,
 	maxshaderprogs
 };
 
@@ -81,6 +82,9 @@ uint soft_compile_shader(uint glenum, const char* source)
 void dispose_shader(ShaderHandle* sha)
 {
 	if (sha->progId)glDeleteProgram(sha->progId);
+
+	sha->numAttribs = 0;
+	sha->progId = 0;
 }
 void unuse_shader(const ShaderHandle* sha)
 {
