@@ -183,6 +183,7 @@ void update_keys()
 
 #define PNG_FILES(FILE) \
 		FILE(linux_pingu)\
+		FILE(MoonTexture)\
 
 
 #define JPG_FILES(FILE) \
@@ -192,6 +193,7 @@ void update_keys()
 		FILE(none)		\
 		FILE(teapot)		\
 		FILE(teapotnormal)		\
+		FILE(Planet1)		\
 
 #define GENERATE_ENUM(ENUM) ENUM,
 
@@ -444,9 +446,10 @@ void init_light(Light* l)
 	use_shader(s);
 	unuse_shader(s);
 	l->shader = LIGHT;
-
-	TeaPot = load_model(teapot);
+#if 0
+	TeaPot = load_model(Planet1);
 	l->model = TeaPot;
+#endif
 	//glBindVertexArray(0);
 	//glGenVertexArrays(1, &l->vao);
 	//glBindVertexArray(l->vao);
@@ -762,6 +765,7 @@ int main()
 	const float frametimeUpTime = 0.5f;
 	float frameTimer = 0.f;
 	float updating = 0.f;
+	load_model(Planet1);
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
@@ -817,8 +821,8 @@ int main()
 		show_engine_stats(ctx,currentFps,currentFrameTime);
 		overview(ctx);
 		calculator(ctx);
-		//while (accumulator >= dt)//processloop
-		//{
+		while (accumulator >= dt)//processloop
+		{
 			accumulator -= dt;
 			if (key_down(GLFW_KEY_W))
 			{
@@ -865,7 +869,7 @@ int main()
 		vec3 newlightPos = { resL.x,resL.y,resL.z };
 
 		oldLightPos = newlightPos;
-		//}
+		}
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -876,7 +880,9 @@ int main()
 		//render_boxes(&shader, VBO,VAO,projectionLOC,modelLOC,viewLOC,oldLightPos,&camera,&projection);
 #endif
 		perspective(&projection, deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 100.f);
+#if 0
 		render_light(light, &camera, &projection, oldLightPos);
+#endif
 
 
 		//printf("%.2f %.2f %.2f \n", newlightPos.x, newlightPos.y, newlightPos.z);
@@ -913,7 +919,7 @@ int main()
 		pro.linear = 0.001f;
 		pro.quadratic = 0.002f;
 
-		render(&rend, teapot, pos, pos, 0.5f, cube, pro, &camera, 0);
+		render(&rend, Planet1, pos, pos, 0.5f, cube, pro, &camera, 0);
 
 		render_nuklear();
 

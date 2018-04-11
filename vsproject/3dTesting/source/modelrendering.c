@@ -170,16 +170,16 @@ typedef struct
 	float	quadratic;
 } LightValues;
 
-inline void render(Renderer* rend,const int model,const vec3 pos, const vec3 rotations, const float scale,Material material,LightValues light,Camera* camera,uint texid)
+inline void render(Renderer* rend,const int modelID,const vec3 pos, const vec3 rotations, const float scale,Material material,LightValues light,Camera* camera,uint texid)
 {
-	ModelHandle* m = &model_cache[model];
+	ModelHandle* m = &model_cache[modelID];
 
 	//käytä texturoitua
-#if 0
-	if (m->texcoordbuffer != NULL && texid != 0)
-	{
 
-		glBindBuffer(GL_ARRAY_BUFFER, rend->VertBO);
+	//if (m->texcoordbuffer != NULL && texid != 0)
+	//{
+
+		/*glBindBuffer(GL_ARRAY_BUFFER, rend->VertBO);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * m->vertexsize, NULL, GL_DYNAMIC_DRAW);
 		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vec3) * m->vertexsize, m->vertexbuffer);
 
@@ -190,7 +190,7 @@ inline void render(Renderer* rend,const int model,const vec3 pos, const vec3 rot
 		glBindBuffer(GL_ARRAY_BUFFER, rend->UvBO);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(vec2) * m->vertexsize, NULL, GL_DYNAMIC_DRAW);
 		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vec3) * m->vertexsize, m->texcoordbuffer);
-		glCheckError();
+		glCheckError();*/
 
 		mat4 model = { 0 };
 		identity(&model);
@@ -201,12 +201,14 @@ inline void render(Renderer* rend,const int model,const vec3 pos, const vec3 rot
 
 		scale_mat4(&model, scale);
 		ShaderHandle* withTex = get_shader(rend->withTex);
+		glBindVertexArray(m->vao);
 		use_shader(withTex);
 
 		set_vec3(withTex, "ViewPos", &camera->cameraPos);
 
 		//aseta materiaalit
-		set_vec3(withTex, "material.diffuse", &material.diffuse);
+		//set_vec3(withTex, "material.diffuse", &material.diffuse);
+		set_uniform_int(withTex, "material.diffuse", 0);
 		glCheckError();
 		set_vec3(withTex, "material.specular", &material.specular);
 		set_uniform_float(withTex, "material.shininess", material.shininess);
@@ -223,28 +225,38 @@ inline void render(Renderer* rend,const int model,const vec3 pos, const vec3 rot
 		set_uniform_float(withTex, "light.linear", light.linear);
 		set_uniform_float(withTex, "light.quadratic", light.quadratic);
 
+		vec3 dir = { -0.2f, -1.0f, -0.3f };
+		vec3 ambient = { 0.05f, 0.05f, 0.05f };
+		vec3 diff = { 0.4f, 0.4f, 0.4f };
+		vec3 spec = { 0.5f, 0.5f, 0.5f };
+		set_vec3(withTex, "glight.direction", &dir);
+		set_vec3(withTex, "glight.ambient", &ambient);
+		set_vec3(withTex, "glight.diffuse", &diff);
+		set_vec3(withTex, "glight.specular", &spec);
+		glCheckError();
+
+
 		glUniformMatrix4fv(rend->viewLOCtex, 1, GL_FALSE, (GLfloat*)camera->view.mat);
 
 		mat4 projection = { 0 };
 
 		perspective(&projection, deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 100.f);
 		glUniformMatrix4fv(rend->projectionLOCtex, 1, GL_FALSE, (GLfloat*)projection.mat);
-		glBindVertexArray(rend->VaoTex);
-
 		glUniformMatrix4fv(rend->modelLOCtex, 1, GL_FALSE, (GLfloat*)model.mat);
 
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, texid);
+		glBindTexture(GL_TEXTURE_2D, m->textId);
 
 		glDrawArrays(GL_TRIANGLES, 0, m->vertexsize);
 
 		unuse_shader(withTex);
 
 
+#if 0
 	}
 	// käytä normaalia
 	else
-#endif
+
 	{
 	/*	for (int i = 0; i < m->vertexsize; i++)
 		{
@@ -309,7 +321,7 @@ inline void render(Renderer* rend,const int model,const vec3 pos, const vec3 rot
 		set_vec3(noTex, "glight.specular", &spec);
 		glCheckError();
 
-	
+		
 
 		glUniformMatrix4fv(rend->viewLOCnoTex, 1, GL_FALSE, (GLfloat*)camera->view.mat);
 
@@ -326,6 +338,7 @@ inline void render(Renderer* rend,const int model,const vec3 pos, const vec3 rot
 		unuse_shader(noTex);
 
 	}
+#endif
 }
 
 

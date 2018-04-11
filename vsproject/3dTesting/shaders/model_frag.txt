@@ -63,7 +63,7 @@ vec3 calculate_point_light(Light pl,vec3 normal, vec3 fragPos, vec3 viewDir)
 
     // specular shading
     vec3 reflectDir = reflect(-lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess/2);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
     // attenuation
     float distance = length(pl.position - fragPos);
     float attenuation = 1.0 / (pl.constant + pl.linear * distance + pl.quadratic * (distance * distance));    
