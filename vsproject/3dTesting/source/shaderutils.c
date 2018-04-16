@@ -72,8 +72,7 @@ uint soft_compile_shader(uint glenum, const char* source)
 			glGetShaderInfoLog(shader, infolen, NULL, infoLog);
 			printf("Error compiling shader :\n%s\n", infoLog);
 			free(infoLog);
-		}
-		glDeleteShader(shader);
+		}(shader);
 		return INVALIDSHADER;
 	}
 	return shader;

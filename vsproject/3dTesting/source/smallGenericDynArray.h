@@ -8,10 +8,10 @@ OBJ.buff = malloc((sizeof *OBJ.buff) * GENERICSIZE);
 
 #define GET_NEW_OBJ(OBJ,BUFF)\
 do{																		\
-if(OBJ.numObjs + 1 >= OBJ.size){										\
+if(OBJ.num + 1 >= OBJ.size){											\
 	OBJ.size *= 2;														\
 	void* temp = OBJ.buff;												\
-	OBJ.buff = realloc(b.buff, (sizeof *OBJ.buff) * OBJ.size);			\
+	OBJ.buff = realloc(OBJ.buff, (sizeof *OBJ.buff) * OBJ.size);		\
 	if (!OBJ.buff){														\
 		OBJ.buff = temp;												\
 		OBJ.size /= 2;													\

@@ -14,9 +14,9 @@
 #include <nuklear.h>
 #include <nuklear_glfw_gl3.h>
 #include <Windows.h>
+#include <smallDLLloader.h>
 
-
-
+#include <engine_inputs.h>
 FILETIME Win32GetLastWriteTime(const char* path)
 {
 	FILETIME time = { 0 };
@@ -536,6 +536,9 @@ static void error_callback(int e, const char *d)
 //CREATEDYNAMICARRAY(int, index_buffer)
 int main()
 {
+	EngineInputs teee = {0};
+	teee.keys = 1;
+	int dddd = is_key_down(&teee,KEY_A);
 
 	mat4 root = { 0 };
 	vec3 aaxis = { 0,1,0 };
@@ -766,6 +769,76 @@ int main()
 	float frameTimer = 0.f;
 	float updating = 0.f;
 	load_model(Planet1);
+
+	DebugRend debugRned = { 0 };
+	init_debugrend(&debugRned);
+
+	//Texture temp = loadTexture(MoonTexture);
+
+	//Material cube = { 0 };
+	//vec3 diff = { 0.4f , 0.3f , 0.2f };
+	//vec3 spec = { 0.3f , 0.4f , 0.1f };
+	//float shine = 32.0f;
+
+	//cube.diffuse = temp.ID;
+	//cube.specular = spec;
+	//cube.shininess = shine;
+
+
+
+	LightValues pro = { 0 };
+	//vec3 lightcolor = { sinf(0.2f* glfwGetTime()),sinf( 0.7f* glfwGetTime()), sinf(1.3f * glfwGetTime()) };
+	vec3 diffL = { 0.8f, 0.8f, 0.8f };
+	//scale_vec3(&diffL, &diffL, 0.5f);
+	vec3 ambL = { 0.05f, 0.05f, 0.05f };
+	//scale_vec3(&ambL, &ambL, 0.2f);
+	vec3 specL = { 1.0f, 1.0f, 1.0f };
+
+	pro.position = oldLightPos;
+	pro.ambient = ambL;
+	pro.diffuse = diffL;
+	pro.specular = specL;
+
+	pro.constant = 1.f;
+	pro.linear = 0.001f;
+	pro.quadratic = 0.002f;
+
+	CREATEDYNAMICARRAY(renderData, RendArray);
+	RendArray data;
+	INITARRAY(data);
+	renderData* planet = NULL;
+	GET_NEW_OBJ(data, planet);
+	*planet = DEFAULT_RENDERDATA;
+
+	planet->material.diffuse = loadTexture(MoonTexture).ID;
+	planet->modelId = Planet1;
+
+
+	GET_NEW_OBJ(data, planet);
+	*planet = DEFAULT_RENDERDATA;
+	planet->material.diffuse = loadTexture(MoonTexture).ID;
+	planet->modelId = Planet1;
+	planet->position.x = 5.f;
+
+	for(int i = 0; i < 50; i++)
+	{
+		GET_NEW_OBJ(data, planet);
+		*planet = DEFAULT_RENDERDATA;
+		planet->material.diffuse = loadTexture(MoonTexture).ID;
+		planet->modelId = Planet1;
+		planet->position.x = 5.f * i;
+	}
+	//printf("kokok %f", planet->material.specular.x);
+	func_ptr init_game = NULL;
+	func_ptr update_game = NULL;
+	func_ptr dispose_game = NULL;
+	DLLHandle game_dll = {0};
+//C:\Users\Pate\Documents\3dTesting\3dTesting\vsproject\3dTesting\game\Project1\x64\Debug
+	load_DLL(&game_dll, "game/Project1/x64/Debug/Project1.dll");
+	init_game = load_DLL_function(game_dll, "init_game");
+	update_game = load_DLL_function(game_dll, "update_game");
+	dispose_game = load_DLL_function(game_dll, "dispose_game");
+	init_game(NULL);
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
@@ -819,10 +892,11 @@ int main()
 		}
 
 		show_engine_stats(ctx,currentFps,currentFrameTime);
-		overview(ctx);
-		calculator(ctx);
+		//overview(ctx);
+		//calculator(ctx);
 		while (accumulator >= dt)//processloop
 		{
+			update_game(NULL);
 			accumulator -= dt;
 			if (key_down(GLFW_KEY_W))
 			{
@@ -869,7 +943,21 @@ int main()
 		vec3 newlightPos = { resL.x,resL.y,resL.z };
 
 		oldLightPos = newlightPos;
+		static float temp = 0;
+		temp += 0.01;
+		vec3 pos1 = { 0,0,0 };
+		vec3 pos2 = { 20,0,20};
+		vec3 dims = { 1,1,1 };
+		draw_box(&debugRned, pos1,model_cache[Planet1].nativeScale);
+		//draw_line(&debugRned, pos1, pos2);
+		//pos2.z *= -1;
+		//draw_line(&debugRned, pos1, pos2);
+		populate_debugRend_buffers(&debugRned);
+
+		glCheckError();
 		}
+
+
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -891,35 +979,11 @@ int main()
 		glCheckError();
 		vec3 pos = { 0 };
 
-		Material cube = { 0 };
-		vec3 diff = {  0.4f , 0.3f , 0.2f };
-		vec3 spec = { 0.3f , 0.4f , 0.1f };
-		float shine = 32.0f;
-
-		cube.diffuse = diff;
-		cube.specular = spec;
-		cube.shininess = shine;
-
-
-
-		LightValues pro = { 0 };
-		//vec3 lightcolor = { sinf(0.2f* glfwGetTime()),sinf( 0.7f* glfwGetTime()), sinf(1.3f * glfwGetTime()) };
-		vec3 diffL = { 0.8f, 0.8f, 0.8f };
-		//scale_vec3(&diffL, &diffL, 0.5f);
-		vec3 ambL = { 0.05f, 0.05f, 0.05f };
-		//scale_vec3(&ambL, &ambL, 0.2f);
-		vec3 specL = { 1.0f, 1.0f, 1.0f };
-
-		pro.position = oldLightPos;
-		pro.ambient = ambL;
-		pro.diffuse = diffL;
-		pro.specular = specL;
-
-		pro.constant = 1.f;
-		pro.linear = 0.001f;
-		pro.quadratic = 0.002f;
-
-		render(&rend, Planet1, pos, pos, 0.5f, cube, pro, &camera, 0);
+	
+		//render(&rend, Planet1, pos, pos, 0.5f, cube, pro, &camera, 0);
+		render_models(&rend, data.buff, data.num, &camera, pro);
+		render_debug_lines(&debugRned,&camera.view);
+		glCheckError();
 
 		render_nuklear();
 
@@ -928,8 +992,11 @@ int main()
 
 		glfwSwapBuffers(window);
 	}
+	dispose_game(NULL);
+	DISPOSE_ARRAY(data);
 	dispose_model_memory();
 	dipose_inputs();
+	dispose_debug_renderer(&debugRned);
 	glfwTerminate();
 	printf("MEMTRACK = %d", MEMTRACK);
 	assert(MEMTRACK == 0);
@@ -1044,8 +1111,8 @@ void hotload_shaders(double dt)
 					use_shader(&tempsha);
 					unuse_shader(&tempsha);
 					success = 1;
-					shader_cache[SHA_PROG_UV] = tempsha;
 					dispose_shader(&shader_cache[SHA_PROG_UV]);
+					shader_cache[SHA_PROG_UV] = tempsha;
 
 				} while (0);
 				if (!success)
@@ -1103,7 +1170,7 @@ void hotload_shaders(double dt)
 					use_shader(&tempsha);
 					unuse_shader(&tempsha);
 					success = 1;
-					dispose_shader(&shader_cache[SHA_PROG_UV]);
+					dispose_shader(&shader_cache[LIGHT]);
 					shader_cache[LIGHT] = tempsha;
 					
 
@@ -1115,5 +1182,65 @@ void hotload_shaders(double dt)
 			}
 
 		}
+
+		if (shader_cache[DEBUG_PROG].numAttribs != 0 && shader_cache[DEBUG_PROG].progId != 0)
+		{
+			FILETIME newTimeFrag = Win32GetLastWriteTime(txt_file_names[debug_frag]);
+			FILETIME newTimeVert = Win32GetLastWriteTime(txt_file_names[debug_vert]);
+
+			if (CompareFileTime(&LASTWRITES[debug_frag], &newTimeFrag) || CompareFileTime(&LASTWRITES[debug_vert], &newTimeVert))
+			{
+				LASTWRITES[debug_frag] = newTimeFrag;
+				LASTWRITES[debug_vert] = newTimeVert;
+
+				uint success = 0;
+				do
+				{
+					printf("LOADING SHADERS \n %s %s \n", txt_file_names[debug_frag], txt_file_names[debug_vert]);
+
+					LASTWRITES[debug_frag] = newTimeFrag;
+					LASTWRITES[debug_vert] = newTimeVert;
+
+					ShaderHandle tempsha = { 0 };
+
+					char* vert_s = load_file(debug_vert, NULL);
+					uint vertID = soft_compile_shader(GL_VERTEX_SHADER, vert_s);
+					free(vert_s);
+					if (vertID == INVALIDSHADER)
+					{
+						break;
+					}
+
+					char* frag_s = load_file(debug_frag, NULL);
+					uint fragID = soft_compile_shader(GL_FRAGMENT_SHADER, frag_s);
+					free(frag_s);
+					if (fragID == INVALIDSHADER)
+					{
+						break;
+					}
+					tempsha.progId = glCreateProgram();
+					glAttachShader(tempsha.progId, vertID);
+					glAttachShader(tempsha.progId, fragID);
+
+					add_attribute(&tempsha, "vertexPosition");
+
+					uint suc = soft_link_shader(&tempsha, vertID, fragID);
+					if (!suc) break;
+					use_shader(&tempsha);
+					unuse_shader(&tempsha);
+					success = 1;
+					dispose_shader(&shader_cache[DEBUG_PROG]);
+					shader_cache[DEBUG_PROG] = tempsha;
+
+
+				} while (0);
+				if (!success)
+				{
+					printf("FAILED TO COMPILE SHADERS");
+				}
+			}
+		}
+
+
 	}
 }

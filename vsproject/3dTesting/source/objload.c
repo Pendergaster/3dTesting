@@ -5,13 +5,11 @@
 typedef struct
 {
 	uint	vertexsize;
-
-
 	uint	vao;
 	uint	vbo;
 	uint	nbo;
 	uint	uvbo;
-	uint	textId;
+	vec3	nativeScale;
 } ModelHandle;
 
 
@@ -57,12 +55,19 @@ ModelHandle load_model(const int model)
 	int noramlBufferSize = 0;
 	int	indexBufferSize = 0;
 	uint hasTexCoords = 0;
+
+	float largestX = 0;
+	float largestY = 0;
+	float largestZ = 0;
 	while (end != EOF)
 	{
 		if (!strcmp("v", buff))
 		{
 			assert(vertexesSize + 1 < MAX_VER_AMOUNT);
 			int matches = fscanf(file, "%f %f %f\n", &vertexes[vertexesSize].x, &vertexes[vertexesSize].y, &vertexes[vertexesSize].z);
+			largestX = largestX < abs(vertexes[vertexesSize].x) ? abs(vertexes[vertexesSize].x) : largestX;
+			largestY = largestY < abs(vertexes[vertexesSize].y) ? abs(vertexes[vertexesSize].y) : largestY;
+			largestZ = largestZ < abs(vertexes[vertexesSize].z) ? abs(vertexes[vertexesSize].z) : largestZ;
 			vertexesSize += 1;
 			if (matches != 3) {
 				FATALERROR;
@@ -73,7 +78,7 @@ ModelHandle load_model(const int model)
 			hasTexCoords = 1;
 			assert(textureCoordSize + 1 < MAX_VER_AMOUNT);
 			float temp = 0;
-			int matches = fscanf(file, "%f %f %f\n", &texturecoords[textureCoordSize].x, &texturecoords[textureCoordSize].y);
+			int matches = fscanf(file, "%f %f\n", &texturecoords[textureCoordSize].x, &texturecoords[textureCoordSize].y);
 			textureCoordSize += 1;
 			if (matches != 2) {
 				FATALERROR;
@@ -222,9 +227,9 @@ ModelHandle load_model(const int model)
 	model_cache[model].vao = vao;
 	model_cache[model].uvbo = UvOB;
 	model_cache[model].vertexsize = vertsize;
-	Texture temp = loadTexture(MoonTexture);
-	model_cache[model].textId = temp.ID;
-
+	model_cache[model].nativeScale.x = largestX;
+	model_cache[model].nativeScale.y = largestY;
+	model_cache[model].nativeScale.z = largestZ;
 
 	free(outVertBuffer); // handle to all memory
 

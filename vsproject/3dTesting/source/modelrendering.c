@@ -154,10 +154,11 @@ inline void init_renderer(Renderer *rend)
 
 typedef struct
 {
-	vec3 diffuse;
+	uint diffuse;
 	vec3 specular;
 	float shininess;
 } Material;
+static const Material DEFAULT_MATERIAL = { .diffuse = 0,.specular = {.x = 0.7f ,.y = 0.7f,.z = 0.7f},.shininess = 32.f };
 
 typedef struct
 {
@@ -169,6 +170,82 @@ typedef struct
 	float	linear;
 	float	quadratic;
 } LightValues;
+
+typedef struct
+{
+	int			modelId;
+	vec3		Rotation;
+	vec3		position;
+	Material	material;
+	float		scale;
+} renderData;
+
+static const renderData DEFAULT_RENDERDATA = { .modelId = Planet1 ,.Rotation = {0},.position = {0},.material = { .diffuse = 0,.specular = { .x = 0.7f ,.y = 0.7f,.z = 0.7f },.shininess = 32.f },.scale = 1, };
+
+inline void render_models(const Renderer *rend,const renderData* data,const uint numData,const Camera* camera,const LightValues light)
+{
+	ShaderHandle* withTex = get_shader(rend->withTex);
+	use_shader(withTex);
+	set_vec3(withTex, "ViewPos", &camera->cameraPos);
+	//glBindVertexArray(m->vao);
+
+	//set light values
+	set_vec3(withTex, "light.position", &light.position);
+	set_vec3(withTex, "light.ambient", &light.ambient);
+	set_vec3(withTex, "light.diffuse", &light.diffuse);
+	set_vec3(withTex, "light.specular", &light.specular);
+	glCheckError();
+
+	set_uniform_float(withTex, "light.constant", light.constant);
+	set_uniform_float(withTex, "light.linear", light.linear);
+	set_uniform_float(withTex, "light.quadratic", light.quadratic);
+
+	vec3 dir = { -0.2f, -1.0f, -0.3f };
+	vec3 ambient = { 0.05f, 0.05f, 0.05f };
+	vec3 diff = { 0.4f, 0.4f, 0.4f };
+	vec3 spec = { 0.5f, 0.5f, 0.5f };
+	set_vec3(withTex, "glight.direction", &dir);
+	set_vec3(withTex, "glight.ambient", &ambient);
+	set_vec3(withTex, "glight.diffuse", &diff);
+	set_vec3(withTex, "glight.specular", &spec);
+	set_uniform_int(withTex, "material.diffuse", 0);
+
+	glUniformMatrix4fv(rend->viewLOCtex, 1, GL_FALSE, (GLfloat*)camera->view.mat);
+
+	mat4 projection = { 0 };
+
+	perspective(&projection, deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 100.f);
+	glUniformMatrix4fv(rend->projectionLOCtex, 1, GL_FALSE, (GLfloat*)projection.mat);
+
+	glActiveTexture(GL_TEXTURE0);
+
+	for (uint i = 0; i < numData; i++)
+	{
+		mat4 model = { 0 };
+		identity(&model);
+		translate_mat4(&model, &model, data[i].position);
+		rotate_mat4_Z(&model, deg_to_rad(data[i].Rotation.z));
+		rotate_mat4_Y(&model, deg_to_rad(data[i].Rotation.y));
+		rotate_mat4_X(&model, deg_to_rad(data[i].Rotation.x));
+		scale_mat4(&model, data[i].scale);
+
+		glCheckError();
+		set_vec3(withTex, "material.specular", &data[i].material.specular);
+		set_uniform_float(withTex, "material.shininess", data[i].material.shininess);
+		glCheckError();
+
+		glUniformMatrix4fv(rend->modelLOCtex, 1, GL_FALSE, (GLfloat*)model.mat);
+
+		glBindTexture(GL_TEXTURE_2D, data[i].material.diffuse);
+		glActiveTexture(GL_TEXTURE0);
+		ModelHandle* m = &model_cache[data[i].modelId];
+		glBindVertexArray(m->vao);
+		glDrawArrays(GL_TRIANGLES, 0, m->vertexsize);
+	}
+	glBindVertexArray(0);
+	unuse_shader(withTex);
+}
+
 
 inline void render(Renderer* rend,const int modelID,const vec3 pos, const vec3 rotations, const float scale,Material material,LightValues light,Camera* camera,uint texid)
 {
@@ -245,7 +322,7 @@ inline void render(Renderer* rend,const int modelID,const vec3 pos, const vec3 r
 		glUniformMatrix4fv(rend->modelLOCtex, 1, GL_FALSE, (GLfloat*)model.mat);
 
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, m->textId);
+		glBindTexture(GL_TEXTURE_2D, material.diffuse);
 
 		glDrawArrays(GL_TRIANGLES, 0, m->vertexsize);
 
