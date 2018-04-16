@@ -15,8 +15,6 @@
 #include <nuklear_glfw_gl3.h>
 #include <Windows.h>
 #include <smallDLLloader.h>
-
-#include <engine_inputs.h>
 FILETIME Win32GetLastWriteTime(const char* path)
 {
 	FILETIME time = { 0 };
@@ -57,16 +55,19 @@ typedef struct
 #define SCREENWIDHT 1200
 #define SCREENHEIGHT 800
 
+#define ENGINE_SIDE
+#include <CommonEngine.h>
+
 #define FATALERROR assert(0);
 #define FATALERRORMESSAGE(STRING) printf(STRING); assert(0);
-typedef struct 
-{
-	ubyte*	keys;
-	ubyte*	lastkeys;
-	vec2	mousepos;
-	vec2	lastMousepos;
-
-} InputManager;
+//typedef struct 
+//{
+//	ubyte*	keys;
+//	ubyte*	lastkeys;
+//	vec2	mousepos;
+//	vec2	lastMousepos;
+//
+//} InputManager;
 
 
 
@@ -87,30 +88,36 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 	if (fov >= 45.0f)
 		fov = 45.0f;
 }
-
-static InputManager in;
-void set_key(int key,ubyte state)
-{
-	in.keys[key] = state;
-}
-void set_mouse( float x, float y)
-{
-	in.mousepos.x = x;
-	in.mousepos.y = y;
-}
+static Engine* engptr;
+////static InputManager in;
+//void set_key(int key,ubyte state)
+//{
+//	in.keys[key] = state;
+//}
+//void set_mouse( float x, float y)
+//{
+//	in.mousepos.x = x;
+//	in.mousepos.y = y;
+//}
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-	if (action == GLFW_PRESS || action == GLFW_RELEASE)
-	set_key( key, action == GLFW_PRESS ? 1 : 0);
+	if (action == GLFW_PRESS)
+	{
+		set_engine_key(&engptr->inputs, key);
+	}
+	else if (action == GLFW_RELEASE)
+	{
+		release_engine_key(&engptr->inputs, key);
+	}
 }
 static ubyte mouse_init = 0;
 void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 {
-	set_mouse((float)xpos, (float)ypos);
+	set_engine_mouse(&engptr->inputs,xpos,ypos);
 	if(!mouse_init)
 	{
 		mouse_init = 1;
-		in.lastMousepos = in.mousepos;
+		engptr->inputs.lastMousepos = engptr->inputs.mousePos;
 	}
 }
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
@@ -125,45 +132,43 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 		}
 	}
 }
-int key_pressed(int key)
-{
-
-	return in.keys[key] == 1 && in.lastkeys[key] == 0;
-}
-int key_down(int key)
-{
-	return in.keys[key] == 1;
-}
-int key_released(int key)
-{
-	return in.keys[key] == 0 && in.lastkeys[key] == 1;
-}
-
+//int key_pressed(int key)
+//{
+//	return in.keys[key] == 1 && in.lastkeys[key] == 0;
+//}
+//int key_down(int key)
+//{
+//	return in.keys[key] == 1;
+//}
+//int key_released(int key)
+//{
+//	return in.keys[key] == 0 && in.lastkeys[key] == 1;
+//}
 
 
 
-void init_keys()
-{
-	int i = GLFW_KEY_LAST;
-	in.keys = calloc(GLFW_KEY_LAST,sizeof(ubyte));
-	in.lastkeys = calloc(GLFW_KEY_LAST, sizeof(ubyte));
-	in.mousepos.x = (float)SCREENWIDHT / 2.f;
-	in.mousepos.y = (float)SCREENHEIGHT / 2.f;
-	in.lastMousepos.x = in.mousepos.x;
-	in.lastMousepos.y = in.mousepos.y;
-}
-void dipose_inputs()
-{
-	free(in.keys);
-	free(in.lastkeys);
-
-}
-void update_keys()
-{
-	memcpy(in.lastkeys, in.keys, sizeof(ubyte)*GLFW_KEY_LAST);
-	if (!mouse_init) return;
-	in.lastMousepos = in.mousepos;
-}
+//
+//void init_keys()
+//{
+//	in.keys = calloc(GLFW_KEY_LAST,sizeof(ubyte));
+//	in.lastkeys = calloc(GLFW_KEY_LAST, sizeof(ubyte));
+//	in.mousepos.x = (float)SCREENWIDHT / 2.f;
+//	in.mousepos.y = (float)SCREENHEIGHT / 2.f;
+//	in.lastMousepos.x = in.mousepos.x;
+//	in.lastMousepos.y = in.mousepos.y;
+//}
+//void dipose_inputs()
+//{
+//	free(in.keys);
+//	free(in.lastkeys);
+//
+//}
+//void update_keys()
+//{
+//	memcpy(in.lastkeys, in.keys, sizeof(ubyte)*GLFW_KEY_LAST);
+//	if (!mouse_init) return;
+//	in.lastMousepos = in.mousepos;
+//}
 
 
 #define SHADER_FILES(FILE)\
@@ -196,7 +201,26 @@ void update_keys()
 		FILE(Planet1)		\
 
 #define GENERATE_ENUM(ENUM) ENUM,
+	//glBindVertexArray(0);
+	//glGenVertexArrays(1, &l->vao);
+	//glBindVertexArray(l->vao);
 
+
+	//glGenBuffers(1, &l->vbo);
+	////glGenBuffers(1, &EBO);
+
+
+	//glBindBuffer(GL_ARRAY_BUFFER, l->vbo);
+	//glBufferData(GL_ARRAY_BUFFER, /*sizeof(verticesBOX)*/sizeof(vec3)*TeaPot.vertexsize, NULL, GL_STATIC_DRAW);
+	//glBufferSubData(GL_ARRAY_BUFFER, 0, /*sizeof(verticesBOX)*/sizeof(vec3)*TeaPot.vertexsize, /*verticesBOX*/TeaPot.vertexbuffer);
+
+
+	//// we only need to bind to the VBO, the container's VBO's data already contains the correct data.
+	//// set the vertex attributes (only position data for our lamp)
+	//glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	//glEnableVertexAttribArray(0);
+	////glBindBuffer(GL_ARRAY_BUFFER, 0);
+	//glBindVertexArray(0);
 #define GENERATE_STRING(STRING) #STRING".txt",
 
 #define GENERATE_STRINGPNG(STRING) #STRING".png",
@@ -450,26 +474,7 @@ void init_light(Light* l)
 	TeaPot = load_model(Planet1);
 	l->model = TeaPot;
 #endif
-	//glBindVertexArray(0);
-	//glGenVertexArrays(1, &l->vao);
-	//glBindVertexArray(l->vao);
 
-
-	//glGenBuffers(1, &l->vbo);
-	////glGenBuffers(1, &EBO);
-
-
-	//glBindBuffer(GL_ARRAY_BUFFER, l->vbo);
-	//glBufferData(GL_ARRAY_BUFFER, /*sizeof(verticesBOX)*/sizeof(vec3)*TeaPot.vertexsize, NULL, GL_STATIC_DRAW);
-	//glBufferSubData(GL_ARRAY_BUFFER, 0, /*sizeof(verticesBOX)*/sizeof(vec3)*TeaPot.vertexsize, /*verticesBOX*/TeaPot.vertexbuffer);
-
-
-	//// we only need to bind to the VBO, the container's VBO's data already contains the correct data.
-	//// set the vertex attributes (only position data for our lamp)
-	//glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-	//glEnableVertexAttribArray(0);
-	////glBindBuffer(GL_ARRAY_BUFFER, 0);
-	//glBindVertexArray(0);
 
 }
 float vertices[] = {
@@ -536,43 +541,12 @@ static void error_callback(int e, const char *d)
 //CREATEDYNAMICARRAY(int, index_buffer)
 int main()
 {
-	EngineInputs teee = {0};
-    teee.keys = 1;
-	teee.keys |= 3;
-	int dddd = is_key_down(KEY_A,&teee);
+	Engine engine = {0};
+	engptr = &engine;
+	//set_engine_key(&teee, GLFW_KEY_A);
+	//int dddd = is_key_down(KEY_A,&teee);
 
-	mat4 root = { 0 };
-	vec3 aaxis = { 0,1,0 };
-	vec4 pooint = { 0,1,0,1};
-
-	create_rotate_mat4(&root, aaxis, deg_to_rad(90.f));
-	vec4 res = { 0 };
-	mat4_mult_vec4(&res, &root, &pooint);
 	
-	identity(&root);
-	rotate_mat4_X(&root, deg_to_rad(90.f));
-	vec4 pooint1 = { 0,1,0,1 };
-	vec4 res2 = { 0 };
-	mat4_mult_vec4(&res2, &root,&pooint1);
-	int a = 0;
-//	rotate_mat4_X()
-
-	/*unsigned char* kkkkkkk = NULL;
-	kkkkkkk = "hei";
-	printf("%s", kkkkkkk);*/
-
-
-	//mat4 ort = { 0 };
-	//identity(&ort);
-	//vec3 rotateAxis = { 1.0f, 0.0f, 0.0 };
-	//rotate_mat4(&ort, &ort, rotateAxis, deg_to_rad(-55.f));
-
-	////rotate_mat4(&ortRotarer, rotateAxis, degrees_to_radians(-55.0f));
-
-	////identify(&ortRotarer);
-	//mat4 per = { 0 };
-	//perspective(&per, degrees_to_radians(45.0f), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 100.f);
-
 
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -599,9 +573,9 @@ int main()
 	glfwSetMouseButtonCallback(window, mouse_button_callback);
 	glfwSetCursorPosCallback(window, cursor_position_callback);
 	glfwSetScrollCallback(window, scroll_callback);
-	uint CURSOR_DISABLED = 1;
+	
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-	init_keys();
+	init_engine(&engine);
 	struct nk_context *ctx;
 	struct nk_colorf bg;
 
@@ -741,8 +715,8 @@ int main()
 
 	float camSpeed = 0.1f;
 	//vec3 camDir = { 0.f , 0.f , -1.f };
-	Camera camera = { 0 };
-	init_camera(&camera);
+	/*EngineCamera camera = { 0 };
+	init_engine_camera(&camera);*/
 
 
 	mat4 lampRotater = { 0 };
@@ -873,21 +847,20 @@ int main()
 			currentFps = 1.f / (add / 200.f);
 			updating = 0;
 		}
-
-		if (key_pressed(GLFW_KEY_ESCAPE))
+		if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		{
 			break;
 		}
-		if (key_pressed(GLFW_KEY_ENTER))
+		if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS)
 		{
-			if (CURSOR_DISABLED)
+			if (!engine.inputs.inputsDisabled)
 			{
-				CURSOR_DISABLED = 0;
+				engine.inputs.inputsDisabled = 1;
 				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 			}
 			else
 			{
-				CURSOR_DISABLED = 1;
+				engine.inputs.inputsDisabled = 0;
 				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 			}
 		}
@@ -899,7 +872,7 @@ int main()
 		{
 			update_game(NULL);
 			accumulator -= dt;
-			if (key_down(GLFW_KEY_W))
+			/*if (key_down(GLFW_KEY_W))
 			{
 				vec3 addvec;
 				scale_vec3(&addvec, &camera.cameraDir, camSpeed);
@@ -926,17 +899,18 @@ int main()
 				vec3 addvec;
 				scale_vec3(&addvec, &camera.cameraDir, -camSpeed);
 				add_vec3(&camera.cameraPos, &camera.cameraPos, &addvec);
-			}
+			}*/
 			hotload_shaders(dt);
-			if (!mouse_init || !CURSOR_DISABLED)
+			/*if (!mouse_init || engine.inputs.inputsDisabled)
 			{
-				update_camera(&camera, in.mousepos, in.mousepos);
+				
+				update_engine_camera(&engine.camera, engine.inputs.mousePos, engine.inputs.mousePos);
 			}
 			else
 			{
-				update_camera(&camera, in.mousepos, in.lastMousepos);
-			}
-			update_keys();
+				update_engine_camera(&engine.camera, engine.inputs.mousePos, engine.inputs.lastMousepos);
+			}*/
+			update_engine_keys(&engine.inputs);
 
 		vec4 tempL = { oldLightPos.x,oldLightPos.y,oldLightPos.z,1.f };
 		vec4 resL = { 0 };
@@ -982,8 +956,8 @@ int main()
 
 	
 		//render(&rend, Planet1, pos, pos, 0.5f, cube, pro, &camera, 0);
-		render_models(&rend, data.buff, data.num, &camera, pro);
-		render_debug_lines(&debugRned,&camera.view);
+		render_models(&rend, data.buff, data.num, &engine.camera, pro);
+		render_debug_lines(&debugRned,&engine.camera.view);
 		glCheckError();
 
 		render_nuklear();
@@ -996,7 +970,7 @@ int main()
 	dispose_game(NULL);
 	DISPOSE_ARRAY(data);
 	dispose_model_memory();
-	dipose_inputs();
+	//dipose_inputs();
 	dispose_debug_renderer(&debugRned);
 	glfwTerminate();
 	printf("MEMTRACK = %d", MEMTRACK);
@@ -1120,7 +1094,6 @@ void hotload_shaders(double dt)
 				{
 					printf("FAILED TO COMPILE SHADERS");
 				}
-
 			}
 		}
 		if (shader_cache[LIGHT].numAttribs != 0 && shader_cache[LIGHT].progId != 0)

@@ -182,7 +182,7 @@ typedef struct
 
 static const renderData DEFAULT_RENDERDATA = { .modelId = Planet1 ,.Rotation = {0},.position = {0},.material = { .diffuse = 0,.specular = { .x = 0.7f ,.y = 0.7f,.z = 0.7f },.shininess = 32.f },.scale = 1, };
 
-inline void render_models(const Renderer *rend,const renderData* data,const uint numData,const Camera* camera,const LightValues light)
+inline void render_models(const Renderer *rend,const renderData* data,const uint numData,const EngineCamera* camera,const LightValues light)
 {
 	ShaderHandle* withTex = get_shader(rend->withTex);
 	use_shader(withTex);
@@ -247,7 +247,7 @@ inline void render_models(const Renderer *rend,const renderData* data,const uint
 }
 
 
-inline void render(Renderer* rend,const int modelID,const vec3 pos, const vec3 rotations, const float scale,Material material,LightValues light,Camera* camera,uint texid)
+inline void render(Renderer* rend,const int modelID,const vec3 pos, const vec3 rotations, const float scale,Material material,LightValues light,EngineCamera* camera,uint texid)
 {
 	ModelHandle* m = &model_cache[modelID];
 
@@ -437,7 +437,7 @@ inline void render_model(const ModelHandle* handle, const vec3 pos, const vec3 r
 	glDrawArrays(GL_TRIANGLES, 0, handle->vertexsize);
 }
 
-inline void render_boxes(ShaderHandle* handle, uint VBO, uint VAO, uint projectionLOC, uint modelLoc, uint viewLOC, vec3 lightpos, Camera* camera, mat4* projection)
+inline void render_boxes(ShaderHandle* handle, uint VBO, uint VAO, uint projectionLOC, uint modelLoc, uint viewLOC, vec3 lightpos, EngineCamera* camera, mat4* projection)
 {
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), NULL, GL_STATIC_DRAW);
@@ -519,7 +519,7 @@ inline void render_boxes(ShaderHandle* handle, uint VBO, uint VAO, uint projecti
 
 	unuse_shader(handle);
 }
-inline void render_light(Light light, Camera* camera, mat4* projection, vec3 lightpos)
+inline void render_light(Light light,EngineCamera* camera, mat4* projection, vec3 lightpos)
 {
 #if 0
 	ShaderHandle* s = get_shader(light.shader);
@@ -572,7 +572,7 @@ vec3 modelNormLocsTEMP[4] =
 { 0.f, 0.f, 6.f },
 { 0.f, 0.f, 7.f },
 };
-inline void render_model_normals(uint VBO, uint normalbuffer, ShaderHandle* handle, ModelHandle* model, Camera* camera, vec3 lightpos, uint viewLOC, uint projectionLOC, uint modelLoc, uint VAO, mat4* projection)
+inline void render_model_normals(uint VBO, uint normalbuffer, ShaderHandle* handle, ModelHandle* model, EngineCamera* camera, vec3 lightpos, uint viewLOC, uint projectionLOC, uint modelLoc, uint VAO, mat4* projection)
 {
 	//bind vertexes
 #if 0

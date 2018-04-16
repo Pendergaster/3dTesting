@@ -3,9 +3,9 @@
 
 #define EXPORT/* extern "C" */__declspec(dllexport)
 
-EXPORT void init_game();
-EXPORT void update_game();
-EXPORT void dispose_game();
+EXPORT void init_game(void* p);
+EXPORT void update_game(void* p);
+EXPORT void dispose_game(void *);
 
 #endif // !GAME_HEADER
 
