@@ -537,8 +537,9 @@ static void error_callback(int e, const char *d)
 int main()
 {
 	EngineInputs teee = {0};
-	teee.keys = 1;
-	int dddd = is_key_down(&teee,KEY_A);
+    teee.keys = 1;
+	teee.keys |= 3;
+	int dddd = is_key_down(KEY_A,&teee);
 
 	mat4 root = { 0 };
 	vec3 aaxis = { 0,1,0 };

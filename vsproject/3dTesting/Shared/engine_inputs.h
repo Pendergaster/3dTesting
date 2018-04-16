@@ -29,7 +29,7 @@ enum EngineKeys
 	KEY_W = 1 << 22,
 	KEY_X = 1 << 23,
 	KEY_Y = 1 << 24,
-	KEY_RAND = 1 << 32,
+	KEY_MAX = 1 << 30,
 	//max_keys
 	/*KEY_Z,
 	KEY_B,
@@ -46,9 +46,22 @@ typedef struct
 	vec2		lastMousepos;
 } EngineInputs;
 
-#define BIT_CHECK(a,b) ((a) & (1ULL<<(b)))
-#define BIT_SET(a,b) ((a) |= (1ULL<<(b)))
+
+// a state b key
+#define BIT_CHECK(a,b) ((a & b) > 0)
+#define BIT_SET(a,b) ( a |= b)
+
 uint is_key_down(uint key,EngineInputs* in)
 {
-	return BIT_CHECK(in->keys, key);
+    return BIT_CHECK(in->keys,key);
 }
+#define BETWEEN(a,x,b) (a < x && b > x)
+static inline void set_key(EngineInputs* in,uint key)
+{
+    int realKey = key - GLFW_KEY_A;
+    if(BETWEEN(0,realKey,30))
+    {
+        BIT_SET(in->keys, (1 << realKey));
+    }
+}
+static inline void 
