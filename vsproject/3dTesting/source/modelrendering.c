@@ -152,38 +152,10 @@ inline void init_renderer(Renderer *rend)
 }
 
 
-typedef struct
-{
-	uint diffuse;
-	vec3 specular;
-	float shininess;
-} Material;
-static const Material DEFAULT_MATERIAL = { .diffuse = 0,.specular = {.x = 0.7f ,.y = 0.7f,.z = 0.7f},.shininess = 32.f };
-
-typedef struct
-{
-	vec3	position;
-	vec3	ambient;
-	vec3	diffuse;
-	vec3	specular;
-	float	constant;
-	float	linear;
-	float	quadratic;
-} LightValues;
-
-typedef struct
-{
-	int			modelId;
-	vec3		Rotation;
-	vec3		position;
-	Material	material;
-	float		scale;
-} renderData;
-
-static const renderData DEFAULT_RENDERDATA = { .modelId = Planet1 ,.Rotation = {0},.position = {0},.material = { .diffuse = 0,.specular = { .x = 0.7f ,.y = 0.7f,.z = 0.7f },.shininess = 32.f },.scale = 1, };
 
 inline void render_models(const Renderer *rend,const renderData* data,const uint numData,const EngineCamera* camera,const LightValues light)
 {
+	if (numData == 0)return;
 	ShaderHandle* withTex = get_shader(rend->withTex);
 	use_shader(withTex);
 	set_vec3(withTex, "ViewPos", &camera->cameraPos);

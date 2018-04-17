@@ -2,20 +2,7 @@
 
 #define MAX_VER_AMOUNT 30000
 
-typedef struct
-{
-	uint	vertexsize;
-	uint	vao;
-	uint	vbo;
-	uint	nbo;
-	uint	uvbo;
-	vec3	nativeScale;
-} ModelHandle;
 
-
-
-
-ModelHandle model_cache[maxmodelfiles] = { 0 };
 
 static vec3* vertexes = NULL;
 static vec3* normals = NULL;
@@ -23,6 +10,7 @@ static vec2* texturecoords = NULL;
 static int* IndexBuffer = NULL;
 
 
+ModelHandle* model_cache = NULL;
 
 ModelHandle load_model(const int model)
 {

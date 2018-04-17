@@ -9,7 +9,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include <stdarg.h>
-#include "source\smallGenericDynArray.h"
 
 #include <nuklear.h>
 #include <nuklear_glfw_gl3.h>
@@ -46,29 +45,60 @@ inline void* DEBUG_CALLOC(int COUNT, int SIZE)
 #define calloc(COUNT,SIZE) DEBUG_CALLOC(COUNT,SIZE)
 #endif //  MEM_DEBUG
 
+#include <smallGenericDynArray.h>
 
 typedef struct
 {
 	int a;
 } myree;
 #include "source\camera.c"
-#define SCREENWIDHT 1200
-#define SCREENHEIGHT 800
+
+
+#define SHADER_FILES(FILE)\
+		FILE(vert_sha) \
+		FILE(frag_sha) \
+		FILE(light_vert)\
+		FILE(light_frag)\
+		FILE(model_frag)\
+		FILE(model_vert)\
+		FILE(debug_vert)\
+		FILE(debug_frag)\
+
+
+#define TXT_FILES(FILE) \
+		FILE(nonefile)  \
+
 
 #define ENGINE_SIDE
 #include <CommonEngine.h>
 
+#define GENERATE_STRING(STRING) #STRING".txt",
+
+#define GENERATE_SHADER_STRING(STRING) "shaders/"#STRING".txt",
+
+static const char* txt_file_names[] = {
+	TXT_FILES(GENERATE_STRING)
+	SHADER_FILES(GENERATE_SHADER_STRING)
+};
+static const char* pic_file_names[] = {
+	PNG_FILES(GENERATE_STRINGPNG)
+	JPG_FILES(GENERATE_STRINGJPG)
+};
+static const char* model_file_names[] = {
+	MODEL_FILES(GENERATE_MODEL_STRING)
+};
+
+enum txt_files
+{
+	TXT_FILES(GENERATE_ENUM)
+	SHADER_FILES(GENERATE_ENUM)
+	maxtxtfiles
+};
+
+FILETIME LASTWRITES[maxtxtfiles];
+
 #define FATALERROR assert(0);
 #define FATALERRORMESSAGE(STRING) printf(STRING); assert(0);
-//typedef struct 
-//{
-//	ubyte*	keys;
-//	ubyte*	lastkeys;
-//	vec2	mousepos;
-//	vec2	lastMousepos;
-//
-//} InputManager;
-
 
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -132,150 +162,10 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 		}
 	}
 }
-//int key_pressed(int key)
-//{
-//	return in.keys[key] == 1 && in.lastkeys[key] == 0;
-//}
-//int key_down(int key)
-//{
-//	return in.keys[key] == 1;
-//}
-//int key_released(int key)
-//{
-//	return in.keys[key] == 0 && in.lastkeys[key] == 1;
-//}
 
 
+Texture* textureCache = NULL;
 
-//
-//void init_keys()
-//{
-//	in.keys = calloc(GLFW_KEY_LAST,sizeof(ubyte));
-//	in.lastkeys = calloc(GLFW_KEY_LAST, sizeof(ubyte));
-//	in.mousepos.x = (float)SCREENWIDHT / 2.f;
-//	in.mousepos.y = (float)SCREENHEIGHT / 2.f;
-//	in.lastMousepos.x = in.mousepos.x;
-//	in.lastMousepos.y = in.mousepos.y;
-//}
-//void dipose_inputs()
-//{
-//	free(in.keys);
-//	free(in.lastkeys);
-//
-//}
-//void update_keys()
-//{
-//	memcpy(in.lastkeys, in.keys, sizeof(ubyte)*GLFW_KEY_LAST);
-//	if (!mouse_init) return;
-//	in.lastMousepos = in.mousepos;
-//}
-
-
-#define SHADER_FILES(FILE)\
-		FILE(vert_sha) \
-		FILE(frag_sha) \
-		FILE(light_vert)\
-		FILE(light_frag)\
-		FILE(model_frag)\
-		FILE(model_vert)\
-		FILE(debug_vert)\
-		FILE(debug_frag)\
-
-
-#define TXT_FILES(FILE) \
-		FILE(nonefile)  \
-		
-
-#define PNG_FILES(FILE) \
-		FILE(linux_pingu)\
-		FILE(MoonTexture)\
-
-
-#define JPG_FILES(FILE) \
-		FILE(laatikko)	\
-
-#define MODEL_FILES(FILE) \
-		FILE(none)		\
-		FILE(teapot)		\
-		FILE(teapotnormal)		\
-		FILE(Planet1)		\
-
-#define GENERATE_ENUM(ENUM) ENUM,
-	//glBindVertexArray(0);
-	//glGenVertexArrays(1, &l->vao);
-	//glBindVertexArray(l->vao);
-
-
-	//glGenBuffers(1, &l->vbo);
-	////glGenBuffers(1, &EBO);
-
-
-	//glBindBuffer(GL_ARRAY_BUFFER, l->vbo);
-	//glBufferData(GL_ARRAY_BUFFER, /*sizeof(verticesBOX)*/sizeof(vec3)*TeaPot.vertexsize, NULL, GL_STATIC_DRAW);
-	//glBufferSubData(GL_ARRAY_BUFFER, 0, /*sizeof(verticesBOX)*/sizeof(vec3)*TeaPot.vertexsize, /*verticesBOX*/TeaPot.vertexbuffer);
-
-
-	//// we only need to bind to the VBO, the container's VBO's data already contains the correct data.
-	//// set the vertex attributes (only position data for our lamp)
-	//glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-	//glEnableVertexAttribArray(0);
-	////glBindBuffer(GL_ARRAY_BUFFER, 0);
-	//glBindVertexArray(0);
-#define GENERATE_STRING(STRING) #STRING".txt",
-
-#define GENERATE_STRINGPNG(STRING) #STRING".png",
-
-#define GENERATE_STRINGJPG(STRING) #STRING".jpg",
-
-#define GENERATE_SHADER_STRING(STRING) "shaders/"#STRING".txt",
-
-#define GENERATE_MODEL_STRING(STRING) "models/"#STRING".obj",
-
-
-static const char* txt_file_names[] = {
-	TXT_FILES(GENERATE_STRING)
-	SHADER_FILES(GENERATE_SHADER_STRING)
-};
-
-static const char* pic_file_names[] = {
-	PNG_FILES(GENERATE_STRINGPNG)
-	JPG_FILES(GENERATE_STRINGJPG)
-};
-static const char* model_file_names[] = {
-	MODEL_FILES(GENERATE_MODEL_STRING)
-};
-
-enum model_files
-{
-	MODEL_FILES(GENERATE_ENUM)
-	maxmodelfiles
-};
-
-enum txt_files
-{
-	TXT_FILES(GENERATE_ENUM)
-	SHADER_FILES(GENERATE_ENUM)
-	maxtxtfiles
-};
-FILETIME LASTWRITES[maxtxtfiles];
-
-
-enum picture_files {
-	PNG_FILES(GENERATE_ENUM)
-	JPG_FILES(GENERATE_ENUM)
-	maxpicfiles
-};
-
-
-
-typedef struct
-{
-	uint	ID;
-	int		widht;
-	int		height;
-	int		channels;
-} Texture;
-Texture textureCache[maxpicfiles] = {0};
 Texture loadTexture(const int file)
 {
 	if(textureCache[file].ID != 0)
@@ -543,10 +433,10 @@ int main()
 {
 	Engine engine = {0};
 	engptr = &engine;
-	//set_engine_key(&teee, GLFW_KEY_A);
-	//int dddd = is_key_down(KEY_A,&teee);
-
-	
+	textureCache = engine.textureCache;
+	model_cache = engine.model_cache;
+	memset(engine.textureCache, 0, sizeof(Texture)*maxpicfiles);
+	memset(engine.model_cache, 0, sizeof(ModelHandle)*maxmodelfiles);
 
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -575,7 +465,7 @@ int main()
 	glfwSetScrollCallback(window, scroll_callback);
 	
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-	init_engine(&engine);
+	//init_engine(&engine);
 	struct nk_context *ctx;
 	struct nk_colorf bg;
 
@@ -713,7 +603,6 @@ int main()
 
 	glCheckError();
 
-	float camSpeed = 0.1f;
 	//vec3 camDir = { 0.f , 0.f , -1.f };
 	/*EngineCamera camera = { 0 };
 	init_engine_camera(&camera);*/
@@ -813,14 +702,12 @@ int main()
 	init_game = load_DLL_function(game_dll, "init_game");
 	update_game = load_DLL_function(game_dll, "update_game");
 	dispose_game = load_DLL_function(game_dll, "dispose_game");
-	init_game(NULL);
+	init_game(&engine);
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
 
 		nk_glfw3_new_frame();
-
-	
 		double newTime = glfwGetTime();
 
 		double frameTime = newTime - currentTime;
@@ -868,68 +755,32 @@ int main()
 		show_engine_stats(ctx,currentFps,currentFrameTime);
 		//overview(ctx);
 		//calculator(ctx);
-		while (accumulator >= dt)//processloop
+		while (accumulator >= dt)
 		{
-			update_game(NULL);
+			update_game(&engine);
 			accumulator -= dt;
-			/*if (key_down(GLFW_KEY_W))
-			{
-				vec3 addvec;
-				scale_vec3(&addvec, &camera.cameraDir, camSpeed);
-				add_vec3(&camera.cameraPos, &camera.cameraPos, &addvec);
-			}
-			if (key_down(GLFW_KEY_A))
-			{
-				vec3 addvec;
-				cross_product(&addvec, &camera.cameraDir, &camera.camUp);
-				normalize_vec3(&addvec);
-				scale_vec3(&addvec, &addvec, camSpeed);
-				neg_vec3(&camera.cameraPos, &camera.cameraPos, &addvec);
-			}
-			if (key_down(GLFW_KEY_D))
-			{
-				vec3 addvec;
-				cross_product(&addvec, &camera.cameraDir, &camera.camUp);
-				normalize_vec3(&addvec);
-				scale_vec3(&addvec, &addvec, camSpeed);
-				add_vec3(&camera.cameraPos, &camera.cameraPos, &addvec);
-			}
-			if (key_down(GLFW_KEY_S))
-			{
-				vec3 addvec;
-				scale_vec3(&addvec, &camera.cameraDir, -camSpeed);
-				add_vec3(&camera.cameraPos, &camera.cameraPos, &addvec);
-			}*/
+
 			hotload_shaders(dt);
-			/*if (!mouse_init || engine.inputs.inputsDisabled)
-			{
-				
-				update_engine_camera(&engine.camera, engine.inputs.mousePos, engine.inputs.mousePos);
-			}
-			else
-			{
-				update_engine_camera(&engine.camera, engine.inputs.mousePos, engine.inputs.lastMousepos);
-			}*/
+		
 			update_engine_keys(&engine.inputs);
 
-		vec4 tempL = { oldLightPos.x,oldLightPos.y,oldLightPos.z,1.f };
-		vec4 resL = { 0 };
-		mat4_mult_vec4(&resL, &lampRotater, &tempL);
-		vec3 newlightPos = { resL.x,resL.y,resL.z };
+			vec4 tempL = { oldLightPos.x,oldLightPos.y,oldLightPos.z,1.f };
+			vec4 resL = { 0 };
+			mat4_mult_vec4(&resL, &lampRotater, &tempL);
+			vec3 newlightPos = { resL.x,resL.y,resL.z };
 
-		oldLightPos = newlightPos;
-		static float temp = 0;
-		temp += 0.01;
-		vec3 pos1 = { 0,0,0 };
-		vec3 pos2 = { 20,0,20};
-		vec3 dims = { 1,1,1 };
-		draw_box(&debugRned, pos1,model_cache[Planet1].nativeScale);
-		//draw_line(&debugRned, pos1, pos2);
-		//pos2.z *= -1;
-		//draw_line(&debugRned, pos1, pos2);
-		populate_debugRend_buffers(&debugRned);
+			oldLightPos = newlightPos;
+			pro.position = oldLightPos;
+			static float temp = 0;
+			temp += 0.01;
+			vec3 pos1 = { 0,0,0 };
+			vec3 pos2 = { 20,0,20 };
+			vec3 dims = { 1,1,1 };
+			draw_box(&debugRned, pos1, model_cache[Planet1].nativeScale);
 
-		glCheckError();
+			populate_debugRend_buffers(&debugRned);
+
+			glCheckError();
 		}
 
 
@@ -938,39 +789,23 @@ int main()
 
 
 
-#ifdef reee
-
-		//render_boxes(&shader, VBO,VAO,projectionLOC,modelLOC,viewLOC,oldLightPos,&camera,&projection);
-#endif
 		perspective(&projection, deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 100.f);
-#if 0
-		render_light(light, &camera, &projection, oldLightPos);
-#endif
-
-
-		//printf("%.2f %.2f %.2f \n", newlightPos.x, newlightPos.y, newlightPos.z);
-		//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 		glCheckError();
 		vec3 pos = { 0 };
 
 	
-		//render(&rend, Planet1, pos, pos, 0.5f, cube, pro, &camera, 0);
-		render_models(&rend, data.buff, data.num, &engine.camera, pro);
+		render_models(&rend, engine.renderArray, engine.sizeOfRenderArray, &engine.camera, pro);
 		render_debug_lines(&debugRned,&engine.camera.view);
 		glCheckError();
 
 		render_nuklear();
 
-
-
-
 		glfwSwapBuffers(window);
 	}
-	dispose_game(NULL);
+	dispose_game(&engine);
 	DISPOSE_ARRAY(data);
 	dispose_model_memory();
-	//dipose_inputs();
 	dispose_debug_renderer(&debugRned);
 	glfwTerminate();
 	printf("MEMTRACK = %d", MEMTRACK);

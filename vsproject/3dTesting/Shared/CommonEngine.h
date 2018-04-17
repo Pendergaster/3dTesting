@@ -1,4 +1,41 @@
 
+
+
+
+#define PNG_FILES(FILE) \
+		FILE(MoonTexture)\
+		//FILE(linux_pingu)\
+
+
+#define JPG_FILES(FILE) \
+		//FILE(laatikko)	\
+
+#define MODEL_FILES(FILE) \
+		FILE(Planet1)		\
+
+#define GENERATE_ENUM(ENUM) ENUM,
+
+
+#define GENERATE_STRINGPNG(STRING) #STRING".png",
+
+#define GENERATE_STRINGJPG(STRING) #STRING".jpg",
+
+
+#define GENERATE_MODEL_STRING(STRING) "models/"#STRING".obj",
+
+enum model_files
+{
+	MODEL_FILES(GENERATE_ENUM)
+	maxmodelfiles
+};
+
+enum picture_files {
+	PNG_FILES(GENERATE_ENUM)
+	JPG_FILES(GENERATE_ENUM)
+	maxpicfiles
+};
+
+
 enum EngineKeys
 {
 	KEY_A = 1 << 0/*= GLFW_KEY_A*/,
@@ -29,7 +66,8 @@ enum EngineKeys
 	KEY_MAX = 1 << 30,
 	//max_keys
 };
-
+#define SCREENWIDHT 1200
+#define SCREENHEIGHT 800
 typedef struct
 {
 	uint32_t	keys;
@@ -43,10 +81,9 @@ typedef struct
 // a state b key
 #define BIT_CHECK(a,b) ((a & b) > 0)
 #define BIT_SET(a,b) ( a |= b)
-#define BIT_UNSET(a,b) (a &= b)
+#define BIT_UNSET(a,b) (a &= ~b)
 #define BETWEEN(a,x,b) (a < x && b > x)
 
-#ifdef ENGINE_SIDE
 static inline void init_engine_inputs(EngineInputs* in)
 {
 	in->keys = 0;
@@ -58,6 +95,7 @@ static inline void init_engine_inputs(EngineInputs* in)
 	in->inputsDisabled = 0;
 }
 
+#ifdef ENGINE_SIDE
 static inline void set_engine_key(EngineInputs* in,uint key)
 {
     int realKey = key - GLFW_KEY_A + 1;
@@ -68,7 +106,11 @@ static inline void set_engine_key(EngineInputs* in,uint key)
 }
 static inline release_engine_key(EngineInputs* in,uint key)
 {
-	BIT_UNSET(in->keys, key);
+	int realKey = key - GLFW_KEY_A + 1;
+	if (BETWEEN(0, realKey, 30))
+	{
+		BIT_UNSET(in->keys, (1 << (realKey - 1)));
+	}
 }
 static inline void update_engine_keys(EngineInputs* in)
 {
@@ -163,17 +205,77 @@ static inline void update_engine_camera(EngineCamera* c, vec2 newMousePos, vec2 
 	create_lookat_mat4(&c->view, &c->cameraPos, &front, &c->camUp);
 }
 
+
+
+typedef struct
+{
+	uint diffuse;
+	vec3 specular;
+	float shininess;
+} Material;
+static const Material DEFAULT_MATERIAL = { .diffuse = 0,.specular = { .x = 0.7f ,.y = 0.7f,.z = 0.7f },.shininess = 32.f };
+
+typedef struct
+{
+	vec3	position;
+	vec3	ambient;
+	vec3	diffuse;
+	vec3	specular;
+	float	constant;
+	float	linear;
+	float	quadratic;
+} LightValues;
+
+typedef struct
+{
+	int			modelId;
+	vec3		Rotation;
+	vec3		position;
+	Material	material;
+	float		scale;
+} renderData;
+
+static const renderData DEFAULT_RENDERDATA = { .modelId = Planet1 ,.Rotation = { 0 },.position = { 0 },.material = { .diffuse = 0,.specular = { .x = 0.7f ,.y = 0.7f,.z = 0.7f },.shininess = 32.f },.scale = 1, };
+
+
+typedef struct
+{
+	uint	vertexsize;
+	uint	vao;
+	uint	vbo;
+	uint	nbo;
+	uint	uvbo;
+	vec3	nativeScale;
+} ModelHandle;
+
+typedef struct
+{
+	uint	ID;
+	int		widht;
+	int		height;
+	int		channels;
+} Texture;
+
 typedef struct
 {
 	EngineInputs	inputs;
 	EngineCamera	camera;
+	ModelHandle		model_cache[maxmodelfiles];
+	Texture			textureCache[maxpicfiles];
+	renderData*		renderArray;
+	uint			sizeOfRenderArray;
+	void*			userdata;
 } Engine;
 
 static inline void init_engine(Engine* en)
 {
 	init_engine_inputs(&en->inputs);
 	init_engine_camera(&en->camera);
+	en->renderArray = NULL;
+	en->sizeOfRenderArray = 0;
+	en->userdata = NULL;
 }
+
 //static inline void rotate_engine_camera(EngineCamera* cam, float yaw, float roll)
 //{
 //
