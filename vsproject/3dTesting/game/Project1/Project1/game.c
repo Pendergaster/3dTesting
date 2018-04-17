@@ -3,9 +3,6 @@
 #include <stdio.h>
 #include <assert.h>
 #include <stdint.h>
-#define MATH_IMPLEMENTATION
-#include <mathutil.h>
-#include <CommonEngine.h>
 
 static int MEMTRACK = 0;
 
@@ -29,6 +26,10 @@ inline void* DEBUG_CALLOC(int COUNT, int SIZE)
 #endif //  MEM_DEBUG
 
 #include <smallGenericDynArray.h>
+#define MATH_IMPLEMENTATION
+#include <mathutil.h>
+#define GAME_SIDE
+#include <CommonEngine.h>
 
 CREATEDYNAMICARRAY(renderData, renderArray)
 
@@ -40,26 +41,44 @@ typedef struct
 EXPORT void init_game(void* p)
 {
 	Engine* eng = (Engine*)p;
-	Game* game = eng->userdata;
+	Game* game = calloc(1, sizeof(Game));
 	init_engine(eng);
+	eng->userdata = game;
 	printf("game inited!");
-	Game* game = p;
+	printf("game initedREEEEEEEEEEEEEEE!");
 	INITARRAY(game->rend);
+
+	renderData* planet = NULL;
+	GET_NEW_OBJ(game->rend, planet);
+	*planet = DEFAULT_RENDERDATA;
+
+	planet->material.diffuse = MoonTexture;
+	planet->modelId = Planet1;
+
+
+	GET_NEW_OBJ(game->rend, planet);
+	*planet = DEFAULT_RENDERDATA;
+	planet->material.diffuse = MoonTexture;
+	planet->modelId = Planet1;
+	planet->position.x = 5.f;
+
+	for (int i = 0; i < 50; i++)
+	{
+		GET_NEW_OBJ(game->rend, planet);
+		*planet = DEFAULT_RENDERDATA;
+		planet->material.diffuse = MoonTexture;
+		planet->modelId = Planet1;
+		planet->position.x = 5.f * i;
+	}
+	eng->renderArray = game->rend.buff;
+	eng->sizeOfRenderArray = game->rend.num;
 }
 
 EXPORT void update_game(void* p)
 {
 	Engine* eng = (Engine*)p;
 	Game* game = eng->userdata;
-	//printf("game updated!");
-	if(is_key_activated(&eng->inputs,KEY_A))
-	{
-		printf("JELLO!\n");
-	}
-	if (is_key_activated(&eng->inputs, KEY_Y))
-	{
-		printf("BELLO!\n");
-	}	
+
 	float camSpeed = 0.1f;
 
 
@@ -102,7 +121,7 @@ EXPORT void update_game(void* p)
 		update_engine_camera(&eng->camera, eng->inputs.mousePos, eng->inputs.lastMousepos);
 	}
 
-
+	draw_box(&eng->drend, game->rend.buff[0].position, eng->model_cache[Planet1].nativeScale);
 	eng->renderArray = game->rend.buff;
 	eng->sizeOfRenderArray = game->rend.num;
 }
@@ -110,8 +129,10 @@ EXPORT void update_game(void* p)
 EXPORT void dispose_game(void* p)
 {
 	Engine* eng = p;
+	dispose_engine(eng);
 	Game* game = eng->userdata;
 	DISPOSE_ARRAY(game->rend);
+	free(game);
 	printf("game disposed!");
 	printf("MEMTRACK = %d", MEMTRACK);
 	assert(MEMTRACK == 0);

@@ -256,6 +256,106 @@ typedef struct
 	int		channels;
 } Texture;
 
+
+//static vert_buffer verts;
+
+CREATEDYNAMICARRAY(vec3, vert_buffer)
+CREATEDYNAMICARRAY(int, index_buffer)
+
+typedef struct
+{
+	uint				vao;
+	uint				vbo;
+	uint				ibo;
+	vert_buffer			verts;
+	index_buffer		indexes;
+	//vec3*				verst;
+	//uint				numVerts;
+	//int*				indexes;
+	int					numIndicies;
+
+} DebugRend;
+
+#ifdef  GAME_SIDE
+
+
+static inline void draw_line(DebugRend* rend, const vec3 pos1, const vec3 pos2)
+{
+	vec3* vertArray = NULL;
+	int ind = rend->verts.num;
+	GET_NEW_BLOCK(rend->verts, vertArray, 2);
+	vertArray[0] = pos1;
+	vertArray[1] = pos2;
+
+	PUSH_NEW_OBJ(rend->indexes, ind);
+	PUSH_NEW_OBJ(rend->indexes, ind + 1);
+}
+
+void draw_box(DebugRend* rend, const vec3 pos, const vec3 dim)
+{
+	int ind = rend->verts.num;
+	vec3* vertArray = NULL;
+	GET_NEW_BLOCK(rend->verts, vertArray, 8);
+	vec3 p1 = { .x = pos.x - dim.x ,.y = pos.y - dim.y,.z = pos.z - dim.z };
+	vec3 p2 = { .x = pos.x - dim.x ,.y = pos.y + dim.y,.z = pos.z - dim.z };
+	vec3 p3 = { .x = pos.x + dim.x ,.y = pos.y + dim.y,.z = pos.z - dim.z };
+	vec3 p4 = { .x = pos.x + dim.x ,.y = pos.y - dim.y,.z = pos.z - dim.z };
+
+	vec3 p5 = { .x = pos.x - dim.x ,.y = pos.y - dim.y,.z = pos.z + dim.z };
+	vec3 p6 = { .x = pos.x - dim.x ,.y = pos.y + dim.y,.z = pos.z + dim.z };
+	vec3 p7 = { .x = pos.x + dim.x ,.y = pos.y + dim.y,.z = pos.z + dim.z };
+	vec3 p8 = { .x = pos.x + dim.x ,.y = pos.y - dim.y,.z = pos.z + dim.z };
+
+	vertArray[0] = p1;
+	vertArray[1] = p2;
+	vertArray[2] = p3;
+	vertArray[3] = p4;
+
+	vertArray[4] = p5;
+	vertArray[5] = p6;
+	vertArray[6] = p7;
+	vertArray[7] = p8;
+
+	int *indbuff = NULL;
+	GET_NEW_BLOCK(rend->indexes, indbuff,24);
+
+
+	indbuff[0] = ind++;
+	indbuff[1]  = ind;
+	indbuff[2]  = ind++;
+	indbuff[3]  = ind;
+	indbuff[4]  = ind++;
+	indbuff[5]  = ind;
+	indbuff[6]  = ind;
+	indbuff[7]  = (ind++) -3;
+		
+	indbuff[8]  = ind++;
+	indbuff[9]  = ind;
+	indbuff[10]  = ind++;
+	indbuff[11]  = ind;
+	indbuff[12]  = ind++;
+	indbuff[13]  = ind;
+	indbuff[14]  = ind;
+	indbuff[15]  = (ind++ )- 3;
+	
+
+	indbuff[16] = indbuff[0];
+	indbuff[17] = indbuff[8];
+
+	indbuff[18] = indbuff[2];
+	indbuff[19] = indbuff[10];
+
+	indbuff[20] = indbuff[4];
+	indbuff[21] = indbuff[12];
+
+	indbuff[22] = indbuff[6];
+	indbuff[23] = indbuff[14];
+	
+}
+
+#endif //  GAME_SIDE
+
+
 typedef struct
 {
 	EngineInputs	inputs;
@@ -265,7 +365,11 @@ typedef struct
 	renderData*		renderArray;
 	uint			sizeOfRenderArray;
 	void*			userdata;
+	DebugRend		drend;
 } Engine;
+
+#ifdef GAME_SIDE
+
 
 static inline void init_engine(Engine* en)
 {
@@ -274,8 +378,16 @@ static inline void init_engine(Engine* en)
 	en->renderArray = NULL;
 	en->sizeOfRenderArray = 0;
 	en->userdata = NULL;
+	INITARRAY(en->drend.verts);
+	INITARRAY(en->drend.indexes);
 }
 
+static inline void dispose_engine(Engine* en)
+{
+	DISPOSE_ARRAY(en->drend.verts);
+	DISPOSE_ARRAY(en->drend.indexes);
+}
+#endif // GAME_SIDE
 //static inline void rotate_engine_camera(EngineCamera* cam, float yaw, float roll)
 //{
 //

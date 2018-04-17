@@ -208,7 +208,7 @@ inline void render_models(const Renderer *rend,const renderData* data,const uint
 
 		glUniformMatrix4fv(rend->modelLOCtex, 1, GL_FALSE, (GLfloat*)model.mat);
 
-		glBindTexture(GL_TEXTURE_2D, data[i].material.diffuse);
+		glBindTexture(GL_TEXTURE_2D, textureCache[ data[i].material.diffuse].ID);
 		glActiveTexture(GL_TEXTURE0);
 		ModelHandle* m = &model_cache[data[i].modelId];
 		glBindVertexArray(m->vao);
@@ -294,7 +294,7 @@ inline void render(Renderer* rend,const int modelID,const vec3 pos, const vec3 r
 		glUniformMatrix4fv(rend->modelLOCtex, 1, GL_FALSE, (GLfloat*)model.mat);
 
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, material.diffuse);
+		glBindTexture(GL_TEXTURE_2D, textureCache[material.diffuse].ID);
 
 		glDrawArrays(GL_TRIANGLES, 0, m->vertexsize);
 

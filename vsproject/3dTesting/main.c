@@ -632,23 +632,12 @@ int main()
 	const float frametimeUpTime = 0.5f;
 	float frameTimer = 0.f;
 	float updating = 0.f;
-	load_model(Planet1);
+	//load_model(Planet1);
 
-	DebugRend debugRned = { 0 };
-	init_debugrend(&debugRned);
+	//DebugRend debugRned = { 0 };
+	init_debugrend(&engine.drend);
 
-	//Texture temp = loadTexture(MoonTexture);
-
-	//Material cube = { 0 };
-	//vec3 diff = { 0.4f , 0.3f , 0.2f };
-	//vec3 spec = { 0.3f , 0.4f , 0.1f };
-	//float shine = 32.0f;
-
-	//cube.diffuse = temp.ID;
-	//cube.specular = spec;
-	//cube.shininess = shine;
-
-
+	
 
 	LightValues pro = { 0 };
 	//vec3 lightcolor = { sinf(0.2f* glfwGetTime()),sinf( 0.7f* glfwGetTime()), sinf(1.3f * glfwGetTime()) };
@@ -666,32 +655,7 @@ int main()
 	pro.constant = 1.f;
 	pro.linear = 0.001f;
 	pro.quadratic = 0.002f;
-
-	CREATEDYNAMICARRAY(renderData, RendArray);
-	RendArray data;
-	INITARRAY(data);
-	renderData* planet = NULL;
-	GET_NEW_OBJ(data, planet);
-	*planet = DEFAULT_RENDERDATA;
-
-	planet->material.diffuse = loadTexture(MoonTexture).ID;
-	planet->modelId = Planet1;
-
-
-	GET_NEW_OBJ(data, planet);
-	*planet = DEFAULT_RENDERDATA;
-	planet->material.diffuse = loadTexture(MoonTexture).ID;
-	planet->modelId = Planet1;
-	planet->position.x = 5.f;
-
-	for(int i = 0; i < 50; i++)
-	{
-		GET_NEW_OBJ(data, planet);
-		*planet = DEFAULT_RENDERDATA;
-		planet->material.diffuse = loadTexture(MoonTexture).ID;
-		planet->modelId = Planet1;
-		planet->position.x = 5.f * i;
-	}
+	
 	//printf("kokok %f", planet->material.specular.x);
 	func_ptr init_game = NULL;
 	func_ptr update_game = NULL;
@@ -702,6 +666,14 @@ int main()
 	init_game = load_DLL_function(game_dll, "init_game");
 	update_game = load_DLL_function(game_dll, "update_game");
 	dispose_game = load_DLL_function(game_dll, "dispose_game");
+	for(int i = 0; i < maxpicfiles;i++)
+	{
+		loadTexture(i);
+	}
+	for (int i = 0; i < maxmodelfiles; i++)
+	{
+		load_model(i);
+	}
 	init_game(&engine);
 	while (!glfwWindowShouldClose(window))
 	{
@@ -776,9 +748,9 @@ int main()
 			vec3 pos1 = { 0,0,0 };
 			vec3 pos2 = { 20,0,20 };
 			vec3 dims = { 1,1,1 };
-			draw_box(&debugRned, pos1, model_cache[Planet1].nativeScale);
+			//draw_box(&debugRned, pos1, model_cache[Planet1].nativeScale);
 
-			populate_debugRend_buffers(&debugRned);
+			populate_debugRend_buffers(&engine.drend);
 
 			glCheckError();
 		}
@@ -796,7 +768,7 @@ int main()
 
 	
 		render_models(&rend, engine.renderArray, engine.sizeOfRenderArray, &engine.camera, pro);
-		render_debug_lines(&debugRned,&engine.camera.view);
+		render_debug_lines(&engine.drend,&engine.camera.view);
 		glCheckError();
 
 		render_nuklear();
@@ -804,9 +776,8 @@ int main()
 		glfwSwapBuffers(window);
 	}
 	dispose_game(&engine);
-	DISPOSE_ARRAY(data);
 	dispose_model_memory();
-	dispose_debug_renderer(&debugRned);
+	dispose_debug_renderer(&engine.drend);
 	glfwTerminate();
 	printf("MEMTRACK = %d", MEMTRACK);
 	assert(MEMTRACK == 0);
