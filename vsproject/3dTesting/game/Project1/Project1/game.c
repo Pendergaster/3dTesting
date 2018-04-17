@@ -73,7 +73,7 @@ EXPORT void init_game(void* p)
 	eng->renderArray = game->rend.buff;
 	eng->sizeOfRenderArray = game->rend.num;
 }
-
+#include "AABBtree.c"
 EXPORT void update_game(void* p)
 {
 	Engine* eng = (Engine*)p;

@@ -1,7 +1,4 @@
 
-
-
-
 #define PNG_FILES(FILE) \
 		FILE(MoonTexture)\
 		//FILE(linux_pingu)\
