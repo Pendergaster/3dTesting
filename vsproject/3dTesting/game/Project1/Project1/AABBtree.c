@@ -97,12 +97,18 @@ static inline void insert_to_tree(AABBtree* tree,const Object* obj)
 	}
 	struct Node* Leaf = create_new_leaf(tree, obj);
 	struct Node* bestNode = get_best_node(tree, obj->base.position, obj->dims);
-	if(bestNode->type == Leaf)
+
+	if(bestNode->type == Leaf)// change bestnode to branch
 	{
+
+		struct Node temp = *bestNode;
+		bestNode->type = Branch;
+		bestNode->childIndexes[0] = 0;
+		bestNode->childIndexes[1] = 0;
 		vec3 pos = { (obj->base.position.x + bestNode->object->base.position.x) / 2.f ,(obj->base.position.y + bestNode->object->base.position.y) / 2.f ,(obj->base.position.z + bestNode->object->base.position.z) / 2.f };
 		vec3 dim = { (abs(obj->base.position.x - bestNode->object->base.position.x) + obj->dims.x + bestNode->object->dims.x) / 2.f ,
 			(abs(obj->base.position.y - bestNode->object->base.position.y) + obj->dims.y + bestNode->object->dims.y) / 2.f  ,
 			(abs(obj->base.position.z - bestNode->object->base.position.z) + obj->dims.z + bestNode->object->dims.z) / 2.f };
-		struct Node* branch = create_new_branch(tree,)
+		//struct Node* branch = create_new_branch(tree,)
 	}
 }
