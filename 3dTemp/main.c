@@ -664,7 +664,7 @@ int main()
 	func_ptr dispose_game = NULL;
 	DLLHandle game_dll = {0};
 //C:\Users\Pate\Documents\3dTesting\3dTesting\vsproject\3dTesting\game\Project1\x64\Debug
-	load_DLL(&game_dll, "DebugBin/game.dll");
+	load_DLL(&game_dll, "game.dll");
 	init_game = load_DLL_function(game_dll, "init_game");
 	update_game = load_DLL_function(game_dll, "update_game");
 	dispose_game = load_DLL_function(game_dll, "dispose_game");

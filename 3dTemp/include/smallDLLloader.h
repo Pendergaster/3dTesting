@@ -18,8 +18,9 @@ int load_DLL(DLLHandle* DLLHANDLE,const char* name)
 
 	UnloadDLL(DLLHANDLE);
 	CopyFile(name, "temp.dll", 0);
-	*DLLHANDLE = LoadLibrary("game/Project1/x64/Debug/Project1.dll");
+	*DLLHANDLE = LoadLibrary("temp.dll");
 
+	assert(*DLLHANDLE);
 	if (!(*DLLHANDLE))
 	{
 		DWORD err = GetLastError();

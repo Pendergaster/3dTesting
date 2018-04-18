@@ -70,6 +70,16 @@ popd
 )
 
 
+IF /I "%1"=="run" (
+pushd DebugBin
+main.exe
+
+popd
+)
+
+
+
+
 
 
 

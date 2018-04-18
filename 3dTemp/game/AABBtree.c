@@ -47,13 +47,13 @@ static inline struct Node* create_new_leaf(AABBtree* tree,const Object* obj)
 
 	return	&tree->allocator[tree->allocatorIndex++];
 }
-static inline struct Node* create_new_branch(AABBtree* tree,const vec3 pos,const vec3 dims)
+static inline struct Node* create_new_branch(AABBtree* tree)
 {
 	tree->allocator[tree->allocatorIndex].type = Branch;
 	tree->allocator[tree->allocatorIndex].childIndexes[0] = 0;
 	tree->allocator[tree->allocatorIndex].childIndexes[1] = 0;
-	tree->allocator[tree->allocatorIndex].p = pos;
-	tree->allocator[tree->allocatorIndex].w = dims;
+	// tree->allocator[tree->allocatorIndex].p = pos;
+	// tree->allocator[tree->allocatorIndex].w = dims;
 	return	&tree->allocator[tree->allocatorIndex++];
 }
 static inline ubyte AABB(const vec3 pos1,const vec3 dim1, const vec3 pos2, const vec3 dim2)
@@ -86,6 +86,65 @@ static inline struct Node* get_best_node(AABBtree* tree,const vec3 pos, const ve
 	return current;
 }
 
+static inline void re_fit(struct Node* br,struct Node* branch,struct Node* leaf)
+{
+	vec3 npos = {(branch->p.x + leaf->p.x)/2.f,(branch->p.y + leaf->p.y)/2.f, (branch->p.z + leaf->p.z)/2.f};
+    vec3 ndim =  {((branch->p.x + leaf->p.x)+(branch->w.x + leaf->w.x))/2.f,
+	((branch->p.y + leaf->p.y)+(branch->w.y + leaf->w.y))/2.f, 
+	((branch->w.z + leaf->w.z)+(branch->p.z + leaf->p.z))/2.f};
+
+	br->p = npos;
+	br->w = ndim;
+}
+
+
+
+static inline void push_upper_dims(AABBtree* tree,struct Node* node)
+{
+	if(node->type == Root) return;
+
+	struct Node* parent = &tree->allocator[node->parentIndex];
+	float maxX = parent->p.x + parent->w.x;
+	float maxY = parent->p.y + parent->w.y;
+	
+	float minX = parent->p.x - parent->w.x;
+	float minY = parent->p.y - parent->w.y;
+
+	ubyte refit = 0;
+	do
+	{
+		if((node->p.x + node->w.x) > maxX)
+		{
+			refit = 1;
+			break;
+		}
+		if((node->p.x - node->w.x) < minX)
+		{
+			refit = 1;
+			break;		
+		}
+		if((node->p.y + node->w.y) > maxY)
+		{
+			refit = 1;
+			break;
+		}
+		if((node->p.y - node->w.y) < minY)
+		{
+			refit = 1;
+			break;		
+		}
+
+	}while(0);
+
+	if(refit)
+	{
+		re_fit(parent,node,node == &tree->allocator[parent->childIndexes[0]] ? &tree->allocator[parent->childIndexes[1]] : &tree->allocator[parent->childIndexes[0]]);
+	}
+	return;	
+}
+
+
+#define ARRAY_INDEX(ARRAY,OBJ)(OBJ - ARRAY)
 static inline void insert_to_tree(AABBtree* tree,const Object* obj)
 {
 	if(tree->allocatorIndex == 0)
@@ -95,20 +154,24 @@ static inline void insert_to_tree(AABBtree* tree,const Object* obj)
 		temp->parentIndex = 0;
 		return;
 	}
-	struct Node* Leaf = create_new_leaf(tree, obj);
+	struct Node* leaf = create_new_leaf(tree, obj);
+	struct Node* branch = create_new_branch(tree);
 	struct Node* bestNode = get_best_node(tree, obj->base.position, obj->dims);
 
-	if(bestNode->type == Leaf)// change bestnode to branch
-	{
-
-		struct Node temp = *bestNode;
-		bestNode->type = Branch;
-		bestNode->childIndexes[0] = 0;
-		bestNode->childIndexes[1] = 0;
-		vec3 pos = { (obj->base.position.x + bestNode->object->base.position.x) / 2.f ,(obj->base.position.y + bestNode->object->base.position.y) / 2.f ,(obj->base.position.z + bestNode->object->base.position.z) / 2.f };
-		vec3 dim = { (abs(obj->base.position.x - bestNode->object->base.position.x) + obj->dims.x + bestNode->object->dims.x) / 2.f ,
-			(abs(obj->base.position.y - bestNode->object->base.position.y) + obj->dims.y + bestNode->object->dims.y) / 2.f  ,
-			(abs(obj->base.position.z - bestNode->object->base.position.z) + obj->dims.z + bestNode->object->dims.z) / 2.f };
-		//struct Node* branch = create_new_branch(tree,)
-	}
+	struct Node temp = *bestNode;
+	bestNode->type = Branch;
+	bestNode->childIndexes[0] = ARRAY_INDEX(tree->allocator,leaf);
+	bestNode->childIndexes[1] = ARRAY_INDEX(tree->allocator,branch);
+	(*branch) = temp; // push old finding down
+	leaf->parentIndex = ARRAY_INDEX(tree->allocator,bestNode);
+	branch->parentIndex = ARRAY_INDEX(tree->allocator,bestNode);
+	//create size for parent
+	re_fit(bestNode,branch,leaf);
+	// vec3 npos = {(branch->p.x + leaf->p.x)/2.f,(branch->p.y + leaf->p.y)/2.f, (branch->p.z + leaf->p.z)/2.f};
+    // vec3 ndim =  {((branch->p.x + leaf->p.x)+(branch->d.x + leaf->d.x))/2.f,
+	// ((branch->p.y + leaf->p.y)+(branch->d.y + leaf->d.y)))/2.f, 
+	// ((branch->d.z + leaf->d.z)+(branch->p.z + leaf->p.z))/2.f};
+	//push upper dimensions
+	push_upper_dims(tree,bestNode);
+	
 }
