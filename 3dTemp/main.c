@@ -431,6 +431,7 @@ static void error_callback(int e, const char *d)
 //CREATEDYNAMICARRAY(int, index_buffer)
 int main()
 {
+	//assert(0);	
 	Engine engine = {0};
 	engptr = &engine;
 	textureCache = engine.textureCache;
@@ -441,7 +442,7 @@ int main()
 
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3),
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	GLFWwindow* window = glfwCreateWindow(SCREENWIDHT,SCREENHEIGHT, "Tabula Rasa", NULL, NULL);
 	if (window == NULL)
@@ -470,7 +471,7 @@ int main()
 	struct nk_context *ctx;
 	struct nk_colorf bg;
 
-#
+
 	ctx = nk_glfw3_init(window, NK_GLFW3_INSTALL_CALLBACKS);
 	{struct nk_font_atlas *atlas;
 	nk_glfw3_font_stash_begin(&atlas);
@@ -663,7 +664,7 @@ int main()
 	func_ptr dispose_game = NULL;
 	DLLHandle game_dll = {0};
 //C:\Users\Pate\Documents\3dTesting\3dTesting\vsproject\3dTesting\game\Project1\x64\Debug
-	load_DLL(&game_dll, "game/Project1/x64/Debug/Project1.dll");
+	load_DLL(&game_dll, "DebugBin/game.dll");
 	init_game = load_DLL_function(game_dll, "init_game");
 	update_game = load_DLL_function(game_dll, "update_game");
 	dispose_game = load_DLL_function(game_dll, "dispose_game");

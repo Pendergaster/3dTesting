@@ -24,17 +24,19 @@ set DEV_ENV=???
 
 
 SETLOCAL
+
+
+IF /I "%1"=="build_engine" (
 SET COMPILE_FLAGS=-Z7
 SET LINK=
-SET BUILD_DIR=bin\
-SET EXE_NAME=test
+SET BUILD_DIR=DebugBin\
+SET EXE_NAME=engine
 
-
-
-pushd bin
+pushd %BUILD_DIR% 
 echo %cd%
 cl %COMPILE_FLAGS% ..\main.c /link %LINK% 
 popd
+)
 
 
 
@@ -44,5 +46,4 @@ popd
 
 
 ENDLOCAL
-
 REM sama kuin EOF
