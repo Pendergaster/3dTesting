@@ -71,12 +71,12 @@ static inline struct Node* get_best_node(AABBtree* tree,const vec3 pos, const ve
 	{
 		if (current->type == Leaf) return current;
 
-		if(AABB(pos,dims, tree->allocator[current->childIndexes[0]].object->base->position, tree->allocator[current->childIndexes[0]].object->dims))
+		if(AABB(pos,dims, tree->allocator[current->childIndexes[0]].p, tree->allocator[current->childIndexes[0]].w))
 		{
 			current = &tree->allocator[current->childIndexes[0]];
 			continue;
 		}
-		if (AABB(pos, dims, tree->allocator[current->childIndexes[1]].object->base->position, tree->allocator[current->childIndexes[0]].object->dims))
+		if (AABB(pos, dims, tree->allocator[current->childIndexes[1]].p, tree->allocator[current->childIndexes[1]].w))
 		{
 			current = &tree->allocator[current->childIndexes[1]];
 			continue;
@@ -164,7 +164,7 @@ static inline void insert_to_tree(AABBtree* tree,const Object* obj)
 		struct Node* branch = create_new_branch(tree);
 		struct Node t = *tree->allocator;
 		tree->allocator->childIndexes[0] = 1;
-		tree->allocator->childIndexes[0] = 2;
+		tree->allocator->childIndexes[1] = 2;
 		*branch = t;
 		tree->allocator->type = Root;
 		tree->rootIndex = 0;
@@ -178,13 +178,36 @@ static inline void insert_to_tree(AABBtree* tree,const Object* obj)
 
 	struct Node* bestNode = get_best_node(tree, obj->base->position, obj->dims);
 
-	struct Node temp = *bestNode;
-	bestNode->type = Branch;
+
+
+
+	(*branch) = (*bestNode);
+	if(bestNode->type == Root)
+	{
+		branch->type = Root;
+		tree->rootIndex = ARRAY_INDEX(tree->allocator,branch);
+		bestNode->type = Branch;
+	}
+
+
+	branch->childIndexes[0] =  ARRAY_INDEX(tree->allocator,leaf);
+	branch->childIndexes[1] =  ARRAY_INDEX(tree->allocator,bestNode);
+
+
+	branch->childIndexes[0] =  ARRAY_INDEX(tree->allocator,leaf);
+	branch->childIndexes[1] =  ARRAY_INDEX(tree->allocator,bestNode);
+
+
+
+
+
+
+
 	bestNode->childIndexes[0] = ARRAY_INDEX(tree->allocator,leaf);
 	bestNode->childIndexes[1] = ARRAY_INDEX(tree->allocator,branch);
-	(*branch) = temp; // push old finding down
-	leaf->parentIndex = ARRAY_INDEX(tree->allocator,bestNode);
-	branch->parentIndex = ARRAY_INDEX(tree->allocator,bestNode);
+
+	leaf->parentIndex = ARRAY_INDEX(tree->allocator,branch);
+	bestNode->parentIndex = ARRAY_INDEX(tree->allocator,branch);
 	//create size for parent
 	re_fit(bestNode,branch,leaf);
 	// vec3 npos = {(branch->p.x + leaf->p.x)/2.f,(branch->p.y + leaf->p.y)/2.f, (branch->p.z + leaf->p.z)/2.f};

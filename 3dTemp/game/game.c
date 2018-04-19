@@ -65,33 +65,28 @@ EXPORT void init_game(void* p)
 	planet->modelId = Planet1;
 	planet->position.x = 5.f;
 
-	for (int i = 0; i < 50; i++)
+	for (int i = game->rend.num; i < 50; i++)
 	{
 		GET_NEW_OBJ(game->rend, planet);
 		*planet = DEFAULT_RENDERDATA;
 		planet->material.diffuse = MoonTexture;
 		planet->modelId = Planet1;
 		planet->position.x = 5.f * i;
-		printf("SAATANA JA VITTU %d %d \n", ARRAY_INDEX(game->rend.buff,planet), game->rend.buff[i].position.x);
+		// for(int i2 = 0, i2 < game->rend.num;i2++)
+	
 	}
-	for(int i = 0; i < 50 ;  i++)
-	{	
-		printf("VITTU JA SAATANA %d %d \n",  ARRAY_INDEX(game->rend.buff,&game->rend.buff[i]),game->rend.buff[i].position.x);
-	}
+
 	eng->renderArray = game->rend.buff;
 	eng->sizeOfRenderArray = game->rend.num;
 	init_tree(&game->tree);
 	Object* objects = calloc(50,sizeof(Object));
-	for(int i = 0; i < 50; i++)
+	for(int i = 0; i < game->rend.num; i++)
 	{
 		objects[i].base = &game->rend.buff[i];
-		printf("VITTU %d \n", objects[i].base->position.x);
 		objects[i].dims = eng->model_cache[Planet1].nativeScale;
 	}
 	for(int i = 0; i < 50; i++)
 	{
-		int vittu = ARRAY_INDEX(game->rend.buff , objects[i].base);
-		printf("INSERTING %d\n",vittu);
 		insert_to_tree(&game->tree,&objects[i]);
 	}
 }
