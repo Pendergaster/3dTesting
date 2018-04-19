@@ -1,7 +1,7 @@
 
 typedef struct
 {
-	renderData	base;
+	renderData*	base;
 	vec3		dims;
 } Object;
 
@@ -38,11 +38,11 @@ static inline void init_tree(AABBtree* tree)
 	tree->rootIndex = 0;
 	tree->allocatorIndex = 0;
 }
-static inline struct Node* create_new_leaf(AABBtree* tree,const Object* obj)
+static inline struct Node* create_new_leaf(AABBtree* tree,const Object* obj) // todo -> FATTEN IT UP BOIIII
 {
 	tree->allocator[tree->allocatorIndex].type = Leaf;
 	tree->allocator[tree->allocatorIndex].object = obj;
-	tree->allocator[tree->allocatorIndex].p = obj->base.position;
+	tree->allocator[tree->allocatorIndex].p = obj->base->position;
 	tree->allocator[tree->allocatorIndex].w = obj->dims;
 
 	return	&tree->allocator[tree->allocatorIndex++];
@@ -66,17 +66,17 @@ static inline ubyte AABB(const vec3 pos1,const vec3 dim1, const vec3 pos2, const
 }
 static inline struct Node* get_best_node(AABBtree* tree,const vec3 pos, const vec3 dims)
 {
-	struct Node* current = &tree->allocator[tree->allocatorIndex];
+	struct Node* current = &tree->allocator[tree->rootIndex];
 	while(1)
 	{
 		if (current->type == Leaf) return current;
 
-		if(AABB(pos,dims, tree->allocator[current->childIndexes[0]].object->base.position, tree->allocator[current->childIndexes[0]].object->dims))
+		if(AABB(pos,dims, tree->allocator[current->childIndexes[0]].object->base->position, tree->allocator[current->childIndexes[0]].object->dims))
 		{
 			current = &tree->allocator[current->childIndexes[0]];
 			continue;
 		}
-		if (AABB(pos, dims, tree->allocator[current->childIndexes[1]].object->base.position, tree->allocator[current->childIndexes[0]].object->dims))
+		if (AABB(pos, dims, tree->allocator[current->childIndexes[1]].object->base->position, tree->allocator[current->childIndexes[0]].object->dims))
 		{
 			current = &tree->allocator[current->childIndexes[1]];
 			continue;
@@ -147,6 +147,7 @@ static inline void push_upper_dims(AABBtree* tree,struct Node* node)
 #define ARRAY_INDEX(ARRAY,OBJ)(OBJ - ARRAY)
 static inline void insert_to_tree(AABBtree* tree,const Object* obj)
 {
+	printf("%f\n",obj->base->position.x);
 	if(tree->allocatorIndex == 0)
 	{
 		struct Node* temp = create_new_leaf(tree, obj);
@@ -154,9 +155,28 @@ static inline void insert_to_tree(AABBtree* tree,const Object* obj)
 		temp->parentIndex = 0;
 		return;
 	}
+
+
+	
+	if(tree->allocatorIndex == 1)
+	{
+		struct Node* leaf = create_new_leaf(tree, obj);
+		struct Node* branch = create_new_branch(tree);
+		struct Node t = *tree->allocator;
+		tree->allocator->childIndexes[0] = 1;
+		tree->allocator->childIndexes[0] = 2;
+		*branch = t;
+		tree->allocator->type = Root;
+		tree->rootIndex = 0;
+		re_fit(tree->allocator,leaf,branch);
+		leaf->parentIndex = 0;
+		branch->parentIndex = 0;
+		return;
+	}
 	struct Node* leaf = create_new_leaf(tree, obj);
 	struct Node* branch = create_new_branch(tree);
-	struct Node* bestNode = get_best_node(tree, obj->base.position, obj->dims);
+
+	struct Node* bestNode = get_best_node(tree, obj->base->position, obj->dims);
 
 	struct Node temp = *bestNode;
 	bestNode->type = Branch;

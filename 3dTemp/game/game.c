@@ -33,9 +33,12 @@ inline void* DEBUG_CALLOC(int COUNT, int SIZE)
 
 CREATEDYNAMICARRAY(renderData, renderArray)
 
+#include "AABBtree.c"
+
 typedef struct
 {
 	renderArray rend;
+	AABBtree	tree;
 } Game;
 
 EXPORT void init_game(void* p)
@@ -69,11 +72,29 @@ EXPORT void init_game(void* p)
 		planet->material.diffuse = MoonTexture;
 		planet->modelId = Planet1;
 		planet->position.x = 5.f * i;
+		printf("SAATANA JA VITTU %d %d \n", ARRAY_INDEX(game->rend.buff,planet), game->rend.buff[i].position.x);
+	}
+	for(int i = 0; i < 50 ;  i++)
+	{	
+		printf("VITTU JA SAATANA %d %d \n",  ARRAY_INDEX(game->rend.buff,&game->rend.buff[i]),game->rend.buff[i].position.x);
 	}
 	eng->renderArray = game->rend.buff;
 	eng->sizeOfRenderArray = game->rend.num;
+	init_tree(&game->tree);
+	Object* objects = calloc(50,sizeof(Object));
+	for(int i = 0; i < 50; i++)
+	{
+		objects[i].base = &game->rend.buff[i];
+		printf("VITTU %d \n", objects[i].base->position.x);
+		objects[i].dims = eng->model_cache[Planet1].nativeScale;
+	}
+	for(int i = 0; i < 50; i++)
+	{
+		int vittu = ARRAY_INDEX(game->rend.buff , objects[i].base);
+		printf("INSERTING %d\n",vittu);
+		insert_to_tree(&game->tree,&objects[i]);
+	}
 }
-#include "AABBtree.c"
 EXPORT void update_game(void* p)
 {
 	Engine* eng = (Engine*)p;
