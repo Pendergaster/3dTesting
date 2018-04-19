@@ -41,6 +41,26 @@ typedef struct
 	AABBtree	tree;
 } Game;
 
+unsigned int rand_interval(unsigned int min, unsigned int max)
+{
+    int r;
+    const unsigned int range = 1 + max - min;
+    const unsigned int buckets = RAND_MAX / range;
+    const unsigned int limit = buckets * range;
+
+    /* Create equal size buckets all in a row, then fire randomly towards
+     * the buckets until you land in one of them. All buckets are equally
+     * likely. If you land off the end of the line of buckets, try again. */
+    do
+    {
+        r = rand();
+    } while (r >= limit);
+
+    return min + (r / buckets);
+}
+
+
+#define NUM_OBJS 5
 EXPORT void init_game(void* p)
 {
 	Engine* eng = (Engine*)p;
@@ -52,26 +72,28 @@ EXPORT void init_game(void* p)
 	INITARRAY(game->rend);
 
 	renderData* planet = NULL;
-	GET_NEW_OBJ(game->rend, planet);
-	*planet = DEFAULT_RENDERDATA;
+	// GET_NEW_OBJ(game->rend, planet);
+	// *planet = DEFAULT_RENDERDATA;
 
-	planet->material.diffuse = MoonTexture;
-	planet->modelId = Planet1;
+	// planet->material.diffuse = MoonTexture;
+	// planet->modelId = Planet1;
 
 
-	GET_NEW_OBJ(game->rend, planet);
-	*planet = DEFAULT_RENDERDATA;
-	planet->material.diffuse = MoonTexture;
-	planet->modelId = Planet1;
-	planet->position.x = 5.f;
+	// GET_NEW_OBJ(game->rend, planet);
+	// *planet = DEFAULT_RENDERDATA;
+	// planet->material.diffuse = MoonTexture;
+	// planet->modelId = Planet1;
+	// planet->position.x = 5.f;
 
-	for (int i = game->rend.num; i < 50; i++)
+	for (int i = game->rend.num; i < NUM_OBJS; i++)
 	{
 		GET_NEW_OBJ(game->rend, planet);
 		*planet = DEFAULT_RENDERDATA;
 		planet->material.diffuse = MoonTexture;
 		planet->modelId = Planet1;
-		planet->position.x = 5.f * i;
+		planet->position.x = rand_interval(0,15);
+		planet->position.y = rand_interval(0,15);
+		planet->position.z = rand_interval(0,15);
 		// for(int i2 = 0, i2 < game->rend.num;i2++)
 	
 	}
@@ -79,16 +101,23 @@ EXPORT void init_game(void* p)
 	eng->renderArray = game->rend.buff;
 	eng->sizeOfRenderArray = game->rend.num;
 	init_tree(&game->tree);
-	Object* objects = calloc(50,sizeof(Object));
+	Object* objects = calloc(NUM_OBJS,sizeof(Object));
 	for(int i = 0; i < game->rend.num; i++)
 	{
 		objects[i].base = &game->rend.buff[i];
 		objects[i].dims = eng->model_cache[Planet1].nativeScale;
 	}
-	for(int i = 0; i < 50; i++)
+	uint inds[NUM_OBJS];
+	for(int i = 0; i < NUM_OBJS; i++)
 	{
-		insert_to_tree(&game->tree,&objects[i]);
+		inds[i] = insert_to_tree(&game->tree,&objects[i]);
 	}
+	printf("INDEXES\n");
+	for(int i = 0; i < NUM_OBJS; i++)
+	{
+		printf("%d\n",inds[i]);
+	}
+	
 }
 EXPORT void update_game(void* p)
 {
@@ -136,8 +165,12 @@ EXPORT void update_game(void* p)
 	{
 		update_engine_camera(&eng->camera, eng->inputs.mousePos, eng->inputs.lastMousepos);
 	}
-
-	draw_box(&eng->drend, game->rend.buff[0].position, eng->model_cache[Planet1].nativeScale);
+	struct Node* current = &game->tree.allocator[game->tree.allocator[game->tree.allocatorIndex].childIndexes[0]];
+	
+	for(int i = 0; i < game->tree.allocatorIndex; i++)
+	{	
+		draw_abbREEE(&game->tree.allocator[i], &eng->drend);
+	}
 	eng->renderArray = game->rend.buff;
 	eng->sizeOfRenderArray = game->rend.num;
 }
@@ -151,5 +184,5 @@ EXPORT void dispose_game(void* p)
 	free(game);
 	printf("game disposed!");
 	printf("MEMTRACK = %d", MEMTRACK);
-	assert(MEMTRACK == 0);
+	//assert(MEMTRACK == 0);
 }

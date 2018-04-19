@@ -62,7 +62,7 @@ static inline ubyte AABB(const vec3 pos1,const vec3 dim1, const vec3 pos2, const
 	float Y = abs(pos1.y - pos2.y);
 	float Z = abs(pos1.z - pos2.z);
 
-	return (dim1.x + dim2.x) < X && (dim1.y + dim2.y) < Y && (dim1.z + dim2.z) < Z;
+	return ((dim1.x + dim2.x) > X && (dim1.y + dim2.y) > Y && (dim1.z + dim2.z) > Z);
 }
 static inline struct Node* get_best_node(AABBtree* tree,const vec3 pos, const vec3 dims)
 {
@@ -86,66 +86,247 @@ static inline struct Node* get_best_node(AABBtree* tree,const vec3 pos, const ve
 	return current;
 }
 
-static inline void re_fit(struct Node* br,struct Node* branch,struct Node* leaf)
+// static inline void re_fit(struct Node* br,struct Node* branch,struct Node* leaf)
+// {
+// 	vec3 npos = {(branch->p.x + leaf->p.x)/2.f,(branch->p.y + leaf->p.y)/2.f, (branch->p.z + leaf->p.z)/2.f};
+//     vec3 ndim =  {((branch->p.x + leaf->p.x)+(branch->w.x + leaf->w.x))/2.f,
+// 	((branch->p.y + leaf->p.y)+(branch->w.y + leaf->w.y))/2.f, 
+// 	((branch->w.z + leaf->w.z)+(branch->p.z + leaf->p.z))/2.f};
+
+// 	br->p = npos;
+// 	br->w = ndim;
+
+// 	// float maxX = branch->p.x + leaf->p.x;
+// 	// float maxY = branch->p.y + leaf->p.y;
+// 	// float maxZ = branch->p.z + leaf->p.z;
+	
+// 	// float minX = branch->p.x - leaf->p.x;
+// 	// float minY = branch->p.y - leaf->p.y;
+// 	// float minZ = branch->p.z - leaf->p.z;
+
+// 	// vec3 npos = {0};
+//     // vec3 ndim =  {0};
+
+// 	// npos.x = (maxX + minX) / 2.f;
+// 	// npos.y = (maxY + minY) / 2.f;
+// 	// npos.z = (maxZ + minZ) / 2.f;
+
+// 	// ndim.x = (minX - maxX) * -1) ;
+// 	// ndim.y = (minY - maxY) * -1) ;
+// 	// ndim.z = (minZ - maxZ) * -1 );
+
+// 	// br->p = npos;
+// 	// br->w = ndim;
+// }
+
+static inline void force_fit_parent(AABBtree* tree,struct Node* parent)
 {
-	vec3 npos = {(branch->p.x + leaf->p.x)/2.f,(branch->p.y + leaf->p.y)/2.f, (branch->p.z + leaf->p.z)/2.f};
-    vec3 ndim =  {((branch->p.x + leaf->p.x)+(branch->w.x + leaf->w.x))/2.f,
-	((branch->p.y + leaf->p.y)+(branch->w.y + leaf->w.y))/2.f, 
-	((branch->w.z + leaf->w.z)+(branch->p.z + leaf->p.z))/2.f};
-
-	br->p = npos;
-	br->w = ndim;
-}
-
-
-
-static inline void push_upper_dims(AABBtree* tree,struct Node* node)
-{
-	if(node->type == Root) return;
-
-	struct Node* parent = &tree->allocator[node->parentIndex];
 	float maxX = parent->p.x + parent->w.x;
 	float maxY = parent->p.y + parent->w.y;
+	float maxZ = parent->p.z + parent->w.z;
 	
 	float minX = parent->p.x - parent->w.x;
 	float minY = parent->p.y - parent->w.y;
+	float minZ = parent->p.z - parent->w.z;
 
-	ubyte refit = 0;
-	do
+	struct Node* obj1 = &tree->allocator[parent->childIndexes[0]];
+	struct Node* obj2 = &tree->allocator[parent->childIndexes[1]];
+
+	float temp1 = obj1->p.x - obj1->w.x;
+	float temp2 = obj2->p.x - obj2->w.x;
+	float minX2 = temp1 < temp2 ? temp1 : temp2;
+
+	temp1 = obj1->p.x + obj1->w.x;
+	temp2 = obj2->p.x + obj2->w.x;
+	float maxX2 = temp1 > temp2 ? temp1 : temp2;
+
+
+	temp1 = obj1->p.y - obj1->w.y;
+	temp2 = obj2->p.y - obj2->w.y;
+	float minY2 = temp1 < temp2 ? temp1 : temp2;
+
+	temp1 = obj1->p.y + obj1->w.y;
+	temp2 = obj2->p.y + obj2->w.y;
+	float maxY2 = temp1 > temp2 ? temp1 : temp2;
+
+
+	temp1 = obj1->p.z - obj1->w.z;
+	temp2 = obj2->p.z - obj2->w.z;
+	float minZ2 = temp1 < temp2 ? temp1 : temp2;
+
+	temp1 = obj1->p.z + obj1->w.z;
+	temp2 = obj2->p.z + obj2->w.z;
+	float maxZ2 = temp1 > temp2 ? temp1 : temp2;
+
+	maxX = maxX > maxX2 ? maxX : maxX2;
+	maxY = maxY > maxY2 ? maxY : maxY2;
+	maxZ = maxZ > maxZ2 ? maxZ : maxZ2;
+
+	minX = minX < minX2 ? minX : minX2;
+	minY = minY < minY2 ? minY : minY2;
+	minZ = minZ < minZ2 ? minZ : minZ2;
+
+	vec3 npos = {0};
+	vec3 ndim = {0};
+
+	npos.x = (maxX + minX) / 2.f;
+	npos.y = (maxY + minY) / 2.f;
+	npos.z = (maxZ + minZ) / 2.f;
+	
+	ndim.x = (minX - maxX) * -0.5f ;
+	ndim.y = (minY - maxY) * -0.5f;
+	ndim.z = (minZ - maxZ) * -0.5f;
+
+	parent->p = npos;
+	parent->w = ndim;
+}
+
+static inline ubyte refit_parent(AABBtree* tree,struct Node* parent)
+{
+
+	// if(node->type == Root) 
+	// {
+	// 	return;
+	// }
+	//struct Node* parent = &tree->allocator[node->parentIndex];
+	float maxX = parent->p.x + parent->w.x;
+	float maxY = parent->p.y + parent->w.y;
+	float maxZ = parent->p.z + parent->w.z;
+	
+	float minX = parent->p.x - parent->w.x;
+	float minY = parent->p.y - parent->w.y;
+	float minZ = parent->p.z - parent->w.z;
+
+	struct Node* obj1 = &tree->allocator[parent->childIndexes[0]];
+	struct Node* obj2 = &tree->allocator[parent->childIndexes[1]];
+
+	float temp1 = obj1->p.x - obj1->w.x;
+	float temp2 = obj2->p.x - obj2->w.x;
+	float minX2 = temp1 < temp2 ? temp1 : temp2;
+
+	temp1 = obj1->p.x + obj1->w.x;
+	temp2 = obj2->p.x + obj2->w.x;
+	float maxX2 = temp1 > temp2 ? temp1 : temp2;
+
+
+	temp1 = obj1->p.y - obj1->w.y;
+	temp2 = obj2->p.y - obj2->w.y;
+	float minY2 = temp1 < temp2 ? temp1 : temp2;
+
+	temp1 = obj1->p.y + obj1->w.y;
+	temp2 = obj2->p.y + obj2->w.y;
+	float maxY2 = temp1 > temp2 ? temp1 : temp2;
+
+
+	temp1 = obj1->p.z - obj1->w.z;
+	temp2 = obj2->p.z - obj2->w.z;
+	float minZ2 = temp1 < temp2 ? temp1 : temp2;
+
+	temp1 = obj1->p.z + obj1->w.z;
+	temp2 = obj2->p.z + obj2->w.z;
+	float maxZ2 = temp1 > temp2 ? temp1 : temp2;
+
+	ubyte inserted = 0;
+	if(maxX > maxX2)
 	{
-		if((node->p.x + node->w.x) > maxX)
-		{
-			refit = 1;
-			break;
-		}
-		if((node->p.x - node->w.x) < minX)
-		{
-			refit = 1;
-			break;		
-		}
-		if((node->p.y + node->w.y) > maxY)
-		{
-			refit = 1;
-			break;
-		}
-		if((node->p.y - node->w.y) < minY)
-		{
-			refit = 1;
-			break;		
-		}
-
-	}while(0);
-
-	if(refit)
-	{
-		re_fit(parent,node,node == &tree->allocator[parent->childIndexes[0]] ? &tree->allocator[parent->childIndexes[1]] : &tree->allocator[parent->childIndexes[0]]);
+		maxX = maxX2;
+		inserted = 1;
 	}
-	return;	
+	if(maxY > maxY2)
+	{
+		maxY = maxY2;
+		inserted = 1;
+	}
+	if(maxZ > maxZ2)
+	{
+		maxZ = maxZ2;
+		inserted = 1;
+	}
+
+	if(minX < minX2)
+	{
+		minX = minX2;
+		inserted = 1;
+	}
+	if(minY < minY2)
+	{
+		minY = minY2;
+		inserted = 1;
+	}
+	if(minZ < minZ2)
+	{
+		minZ = minZ2;
+		inserted = 1;
+	}
+	if (!inserted) return 0;
+
+	vec3 npos = {0};
+	vec3 ndim = {0};
+
+	npos.x = (maxX + minX) / 2.f;
+	npos.y = (maxY + minY) / 2.f;
+	npos.z = (maxZ + minZ) / 2.f;
+	
+	ndim.x = (minX - maxX) * -0.5f;
+	ndim.y = (minY - maxY) * -0.5f;
+	ndim.z = (minZ - maxZ) * -0.5f;
+
+	parent->p = npos;
+	parent->w = ndim;
+	// maxX = maxX > maxX2 : maxX ? maxX2;
+	// maxY = maxY > maxY2 : maxY ? maxY2;
+	// maxZ = maxZ > maxZ2 : maxZ ? maxZ2;
+	
+	// minX = minX < minX2 : minX ? minX2;
+	// minY = minY < minY2 : minY ? minY2;
+	// minZ = minZ < minZ2 : minZ ? minZ2;
+
+	// ubyte refit = 0;
+	// do
+	// {
+	// 	float temp = (node->p.x + node->w.x);
+	// 	if(temp > maxX)
+	// 	{
+	// 		maxX = temp; 
+	// 		refit = 1;
+	// 	}
+	// 	temp = (node->p.x - node->w.x);
+	// 	if(temp < minX)
+	// 	{
+	// 		minX = temp;
+	// 		refit = 1;	
+	// 	}
+	// 	temp = (node->p.y + node->w.y);
+	// 	if(temp > maxY)
+	// 	{
+	// 		maxY = temp;
+	// 		refit = 1;
+	// 	}
+	// 	if((node->p.y - node->w.y) < minY)
+	// 	{
+	// 		refit = 1;
+	// 	}
+	// 	if((node->p.z + node->w.z) > maxZ)
+	// 	{
+	// 		refit = 1;
+	// 	}
+	// 	if((node->p.z - node->w.z) < minZ)
+	// 	{
+	// 		refit = 1;
+	// 	}
+	// }while(0);
+
+	// if(refit)
+	// {
+	// 	re_fit(parent,node,node == &tree->allocator[parent->childIndexes[0]] ? &tree->allocator[parent->childIndexes[1]] : &tree->allocator[parent->childIndexes[0]]);
+	// 	push_upper_dims(tree,parent);
+	// }
+	return 1;	
 }
 
 
 #define ARRAY_INDEX(ARRAY,OBJ)(OBJ - ARRAY)
-static inline void insert_to_tree(AABBtree* tree,const Object* obj)
+static inline uint insert_to_tree(AABBtree* tree,const Object* obj)
 {
 	printf("%f\n",obj->base->position.x);
 	if(tree->allocatorIndex == 0)
@@ -153,7 +334,7 @@ static inline void insert_to_tree(AABBtree* tree,const Object* obj)
 		struct Node* temp = create_new_leaf(tree, obj);
 		tree->rootIndex = 0;
 		temp->parentIndex = 0;
-		return;
+		return 0;
 	}
 
 
@@ -168,10 +349,11 @@ static inline void insert_to_tree(AABBtree* tree,const Object* obj)
 		*branch = t;
 		tree->allocator->type = Root;
 		tree->rootIndex = 0;
-		re_fit(tree->allocator,leaf,branch);
+		//re_fit(tree->allocator,leaf,branch);
+		force_fit_parent(tree,tree->allocator);
 		leaf->parentIndex = 0;
 		branch->parentIndex = 0;
-		return;
+		return (uint)ARRAY_INDEX(tree->allocator,leaf);
 	}
 	struct Node* leaf = create_new_leaf(tree, obj);
 	struct Node* branch = create_new_branch(tree);
@@ -184,37 +366,58 @@ static inline void insert_to_tree(AABBtree* tree,const Object* obj)
 	(*branch) = (*bestNode);
 	if(bestNode->type == Root)
 	{
-		branch->type = Root;
+		//branch->type = Branch;
 		tree->rootIndex = ARRAY_INDEX(tree->allocator,branch);
 		bestNode->type = Branch;
 	}
+	else
+	{
+		tree->allocator[branch->parentIndex].childIndexes[ 
+			&tree->allocator[tree->allocator[branch->parentIndex].childIndexes[0]] == bestNode ? 0 : 1
+		 ] = ARRAY_INDEX(tree->allocator,branch);
+	}
 
 
-	branch->childIndexes[0] =  ARRAY_INDEX(tree->allocator,leaf);
-	branch->childIndexes[1] =  ARRAY_INDEX(tree->allocator,bestNode);
+	
+ 	branch->childIndexes[0] = ARRAY_INDEX(tree->allocator,leaf);
+	branch->childIndexes[1] = ARRAY_INDEX(tree->allocator,bestNode);
 
 
-	branch->childIndexes[0] =  ARRAY_INDEX(tree->allocator,leaf);
-	branch->childIndexes[1] =  ARRAY_INDEX(tree->allocator,bestNode);
-
-
-
-
-
-
-
-	bestNode->childIndexes[0] = ARRAY_INDEX(tree->allocator,leaf);
-	bestNode->childIndexes[1] = ARRAY_INDEX(tree->allocator,branch);
 
 	leaf->parentIndex = ARRAY_INDEX(tree->allocator,branch);
 	bestNode->parentIndex = ARRAY_INDEX(tree->allocator,branch);
 	//create size for parent
-	re_fit(bestNode,branch,leaf);
+	//re_fit(bestNode,branch,leaf);
+	force_fit_parent(tree,branch);
 	// vec3 npos = {(branch->p.x + leaf->p.x)/2.f,(branch->p.y + leaf->p.y)/2.f, (branch->p.z + leaf->p.z)/2.f};
     // vec3 ndim =  {((branch->p.x + leaf->p.x)+(branch->d.x + leaf->d.x))/2.f,
 	// ((branch->p.y + leaf->p.y)+(branch->d.y + leaf->d.y)))/2.f, 
 	// ((branch->d.z + leaf->d.z)+(branch->p.z + leaf->p.z))/2.f};
+
 	//push upper dimensions
-	push_upper_dims(tree,bestNode);
-	
+	struct Node* current = branch;
+	while(1)
+	{
+		if(current->type == Root)
+		{
+			force_fit_parent(tree,current);
+			break;
+		}
+		if(!refit_parent(tree,current)) break;
+		current = &tree->allocator[current->parentIndex];
+	}
+	//push_upper_dims(tree,bestNode);
+	return (uint)ARRAY_INDEX(tree->allocator,leaf);
 }
+// static inline struct Node* get_left_most(AABBtree* tree,struct Node* n)
+// {
+// 	while(n->type != Leaf)
+// 	{
+// 		n =  &tree->allocator[n->childIndexes[2]];
+// 	}	
+// 	return n;
+// }
+ static inline void draw_abbREEE(struct Node* n,DebugRend* rend)
+ {
+ 	draw_box(rend,n->p,n->w);
+ }
