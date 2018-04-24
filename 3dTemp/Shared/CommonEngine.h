@@ -6,9 +6,18 @@
 
 #define JPG_FILES(FILE) \
 		//FILE(laatikko)	\
-
+		
 #define MODEL_FILES(FILE) \
 		FILE(Planet1)		\
+
+#define TGA_FILES(FILE) \
+		FILE(drakeq_bk)\
+		FILE(drakeq_dn)\
+		FILE(drakeq_ft)\
+		FILE(drakeq_lf)\
+		FILE(drakeq_rt)\
+		FILE(drakeq_up)\
+	
 
 #define GENERATE_ENUM(ENUM) ENUM,
 
@@ -17,8 +26,10 @@
 
 #define GENERATE_STRINGJPG(STRING) #STRING".jpg",
 
+#define GENERATE_STRINGTGA(STRING) #STRING".tga",
 
 #define GENERATE_MODEL_STRING(STRING) "models/"#STRING".obj",
+
 
 enum model_files
 {
@@ -32,7 +43,11 @@ enum picture_files {
 	maxpicfiles
 };
 
-
+enum skybox_files
+{
+	TGA_FILES(GENERATE_ENUM)
+	maxskyboxfiles
+};
 enum EngineKeys
 {
 	KEY_A = 1 << 0/*= GLFW_KEY_A*/,
@@ -359,6 +374,7 @@ typedef struct
 	EngineCamera	camera;
 	ModelHandle		model_cache[maxmodelfiles];
 	Texture			textureCache[maxpicfiles];
+	Texture			skyBoxCache[maxskyboxfiles];
 	renderData**	renderArray;
 	uint			sizeOfRenderArray;
 	void*			userdata;

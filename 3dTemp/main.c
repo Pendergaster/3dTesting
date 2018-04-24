@@ -84,6 +84,12 @@ static const char* pic_file_names[] = {
 	PNG_FILES(GENERATE_STRINGPNG)
 	JPG_FILES(GENERATE_STRINGJPG)
 };
+static const char* skybox_names[] = 
+{
+	TGA_FILES(GENERATE_STRINGTGA)
+};
+
+
 static const char* model_file_names[] = {
 	MODEL_FILES(GENERATE_MODEL_STRING)
 };
@@ -166,25 +172,29 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 
 Texture* textureCache = NULL;
 
-Texture loadTexture(const int file)
+Texture loadTexture(Texture* cache,const int TEX_TARGET,const int file,const int TYPE,const int TEXPARAM,const char* names[])
 {
-	if(textureCache[file].ID != 0)
+	if(cache[file].ID != 0)
 	{
-		return textureCache[file];
+		return cache[file];
 	}
 	Texture* tex = &textureCache[file];
 	//int* k = malloc(1000);
 	//k[3] = 0;
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 	glGenTextures(1, &tex->ID);
-	glBindTexture(GL_TEXTURE_2D, tex->ID);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glBindTexture(TEX_TARGET, tex->ID);
+	glTexParameteri(TEX_TARGET, GL_TEXTURE_WRAP_S, TEXPARAM);
+	glTexParameteri(TEX_TARGET, GL_TEXTURE_WRAP_T, TEXPARAM);
+	if(TEX_TARGET == GL_TEXTURE_CUBE_MAP)
+	{
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	}
+	glTexParameterf(TEX_TARGET, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameterf(TEX_TARGET, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-	unsigned char* data = stbi_load(pic_file_names[file], &tex->widht, &tex->height, &tex->channels,0);
+	unsigned char* data = stbi_load(names[file], &tex->widht, &tex->height, &tex->channels,0);
+	printf("LOADINT TEXTURE %s\n",names[file]);
 	if(!data)
 	{
 		FATALERROR;
@@ -192,13 +202,15 @@ Texture loadTexture(const int file)
 	}
 	if (tex->channels == 3)
 	{
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tex->widht, tex->height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-		glGenerateMipmap(GL_TEXTURE_2D);
+		glTexImage2D(TYPE, 0, GL_RGB, tex->widht, tex->height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+		if(TEX_TARGET != GL_TEXTURE_MAP)
+		glGenerateMipmap(TYPE);
 	}
 	else if (tex->channels == 4)
 	{
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex->widht, tex->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-		glGenerateMipmap(GL_TEXTURE_2D);
+		glTexImage2D(TYPE, 0, GL_RGBA, tex->widht, tex->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+		if(TEX_TARGET != GL_TEXTURE_MAP)
+		glGenerateMipmap(TYPE);
 	}
 	else
 	{
@@ -438,6 +450,7 @@ int main()
 	model_cache = engine.model_cache;
 	memset(engine.textureCache, 0, sizeof(Texture)*maxpicfiles);
 	memset(engine.model_cache, 0, sizeof(ModelHandle)*maxmodelfiles);
+	memset(engine.skyBoxCache, 0, sizeof(ModelHandle)*maxmodelfiles);
 
 
 	glfwInit();
@@ -670,8 +683,12 @@ int main()
 	dispose_game = load_DLL_function(game_dll, "dispose_game");
 	for(int i = 0; i < maxpicfiles;i++)
 	{
-		loadTexture(i);
+		loadTexture(engine.textureCache,i,GL_TEXTURE_2D,GL_REPEAT,pic_file_names);
 	}
+	//for(int i = 0 ;i < maxskyboxfiles; i++)
+	//{
+		//loadTexture(engine.skyBoxCache,i,GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,GL_CLAMP_TO_EDGE,skybox_names);
+	//}
 	for (int i = 0; i < maxmodelfiles; i++)
 	{
 		load_model(i);

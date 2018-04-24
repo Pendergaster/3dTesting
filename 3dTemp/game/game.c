@@ -71,9 +71,13 @@ static inline void init_objectallocator(ObjectAllocator* al)
 	(*ar) = malloc(POOL_SIZE * sizeof(Object) + POOL_SIZE * sizeof(renderData));
 	GET_NEW_OBJ(al->rendPools,rd);
 	(*rd) = (renderData*)((*ar)+POOL_SIZE);
-	
+int dist = (*ar) -((Object*)(*rd));	
 }
 
+
+// asdfasdf 
+// g; g,
+// ctrl-o ctrl-i
 static inline Object* new_object(ObjectAllocator* al)
 {
 	Object* ret = NULL;
@@ -82,7 +86,9 @@ static inline Object* new_object(ObjectAllocator* al)
 	{
 		if(al->currentIndex < POOL_SIZE)
 		{
+			
 			ret  = &BACK(al->pools)[al->currentIndex];
+			*ret = DEFAULT_OBJECT;
 			ret->base =  &BACK(al->rendPools)[al->currentIndex++];
 		}
 		else
@@ -96,6 +102,7 @@ static inline Object* new_object(ObjectAllocator* al)
 			GET_NEW_OBJ(al->rendPools,rd);
 			(*rd) = (renderData*)((*ar)+POOL_SIZE);
 			ret  = &BACK(al->pools)[al->currentIndex];
+			*ret = DEFAULT_OBJECT;
 			ret->base =  &BACK(al->rendPools)[al->currentIndex++];
 		}
 
@@ -106,7 +113,6 @@ static inline Object* new_object(ObjectAllocator* al)
 		POP_ARRAY_COPY(al->freelist, ret);
 		POP_ARRAY_COPY(al->freeRendList,ret->base);
 	}
-	*ret = DEFAULT_OBJECT;
 	*(ret->base) = DEFAULT_RENDERDATA;
 	return ret;
 }
@@ -301,9 +307,11 @@ EXPORT void update_game(void* p)
 	ObjectBuffer temp;
 	INITARRAY(temp);
 
-	vec3 potemp = {0};
+	static float pp = 0.f;
+	pp += 0.02f;
+	vec3 potemp = {pp,pp,pp};
 	if(game->objects.num > 2)
-	query_area(&game->tree,potemp,5,&temp);
+	query_area(&game->tree,potemp,10,&temp);
 	for(int i = 0; i < temp.num; i++)
 	{
 		draw_box(&eng->drend,temp.buff[i]->base->position,temp.buff[i]->dims);
@@ -311,8 +319,8 @@ EXPORT void update_game(void* p)
 	vec3 di = {10,10,10};
 	draw_box(&eng->drend,potemp,di);
 	DISPOSE_ARRAY(temp);
-	if(game->objects.num)
-	draw_tree(&game->tree,&eng->drend);
+//	if(game->objects.num)
+	//draw_tree(&game->tree,&eng->drend);
 
 	eng->renderArray = game->rend.buff;
 	eng->sizeOfRenderArray = game->rend.num;
