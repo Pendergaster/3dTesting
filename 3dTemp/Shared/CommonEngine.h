@@ -11,12 +11,12 @@
 		FILE(Planet1)		\
 
 #define TGA_FILES(FILE) \
-		FILE(drakeq_bk)\
-		FILE(drakeq_dn)\
-		FILE(drakeq_ft)\
 		FILE(drakeq_lf)\
 		FILE(drakeq_rt)\
 		FILE(drakeq_up)\
+		FILE(drakeq_dn)\
+		FILE(drakeq_ft)\
+		FILE(drakeq_bk)\
 	
 
 #define GENERATE_ENUM(ENUM) ENUM,
@@ -374,7 +374,9 @@ typedef struct
 	EngineCamera	camera;
 	ModelHandle		model_cache[maxmodelfiles];
 	Texture			textureCache[maxpicfiles];
-	Texture			skyBoxCache[maxskyboxfiles];
+	uint			skyBoxID;
+	uint			skyBoxvbo;
+	uint			skyBoxvao;
 	renderData**	renderArray;
 	uint			sizeOfRenderArray;
 	void*			userdata;

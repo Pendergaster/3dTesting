@@ -76,5 +76,36 @@ DebugBin\main.exe
 popd
 )
 
+IF /I "%1"=="build_all" (
+SET COMPILE_FLAGS=-Zi
+
+SET BUILD_DIR=DebugBin
+SET EXE_NAME=engine.exe
+
+pushd DebugBin
+REM -LD -> buildaa .dll -MD jälkee
+REM nologo ei turhaa printtiä / /MD common runtime multithreaded   /   /link alottaa linkkaamisen / 
+cl -Zi %COMPILE_FLAGS% /DEBUG ..\main.c ..\source\nuklear_inc.c ..\source\glad.c %includes% /MD /link %libs% -LIBPATH:../libraries 
+popd
+
+
+SET COMPILE_FLAGS=-Z7
+
+SET BUILD_DIR=DebugBin
+SET LIB_NAME=engine
+
+pushd DebugBin
+
+
+REM -LD -> buildaa .dll -MD jälkee
+REM nologo ei turhaa printtiä / /MD common runtime multithreaded   /   /link alottaa linkkaamisen / 
+cl -Zi -nologo %COMPILE_FLAGS% %game_includes% ..\game\game.c  /MD /LD /link  %libs% -LIBPATH:../libraries  
+popd
+
+
+
+
+)
+
 ENDLOCAL
 REM sama kuin EOF

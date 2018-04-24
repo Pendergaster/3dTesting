@@ -63,6 +63,8 @@ typedef struct
 		FILE(model_vert)\
 		FILE(debug_vert)\
 		FILE(debug_frag)\
+		FILE(skybox_vert)\
+		FILE(skybox_frag)\
 
 
 #define TXT_FILES(FILE) \
@@ -172,29 +174,25 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 
 Texture* textureCache = NULL;
 
-Texture loadTexture(Texture* cache,const int TEX_TARGET,const int file,const int TYPE,const int TEXPARAM,const char* names[])
+void loadTexture(const int file)
 {
-	if(cache[file].ID != 0)
+	if(textureCache[file].ID != 0)
 	{
-		return cache[file];
+		return;
 	}
 	Texture* tex = &textureCache[file];
 	//int* k = malloc(1000);
 	//k[3] = 0;
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 	glGenTextures(1, &tex->ID);
-	glBindTexture(TEX_TARGET, tex->ID);
-	glTexParameteri(TEX_TARGET, GL_TEXTURE_WRAP_S, TEXPARAM);
-	glTexParameteri(TEX_TARGET, GL_TEXTURE_WRAP_T, TEXPARAM);
-	if(TEX_TARGET == GL_TEXTURE_CUBE_MAP)
-	{
-		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-	}
-	glTexParameterf(TEX_TARGET, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameterf(TEX_TARGET, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glBindTexture(GL_TEXTURE_2D, tex->ID);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-	unsigned char* data = stbi_load(names[file], &tex->widht, &tex->height, &tex->channels,0);
-	printf("LOADINT TEXTURE %s\n",names[file]);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	unsigned char* data = stbi_load(pic_file_names[file], &tex->widht, &tex->height, &tex->channels,0);
 	if(!data)
 	{
 		FATALERROR;
@@ -202,24 +200,22 @@ Texture loadTexture(Texture* cache,const int TEX_TARGET,const int file,const int
 	}
 	if (tex->channels == 3)
 	{
-		glTexImage2D(TYPE, 0, GL_RGB, tex->widht, tex->height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-		if(TEX_TARGET != GL_TEXTURE_MAP)
-		glGenerateMipmap(TYPE);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tex->widht, tex->height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
 	}
 	else if (tex->channels == 4)
 	{
-		glTexImage2D(TYPE, 0, GL_RGBA, tex->widht, tex->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-		if(TEX_TARGET != GL_TEXTURE_MAP)
-		glGenerateMipmap(TYPE);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex->widht, tex->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
 	}
 	else
 	{
 		FATALERROR;
 	}
 	stbi_image_free(data);
-
-	return *tex;
 }
+
+#include "source/shaderutils.c"
 char* load_file_from_source(const char* file, int* size);
 char* load_file(int file,int* size)
 {
@@ -228,7 +224,135 @@ char* load_file(int file,int* size)
 
 	return source;
 }
-#include "source/shaderutils.c"
+
+uint load_skybox(uint* skyvao,uint* skyvbo)
+{
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  	Texture tex ={0};
+    glGenTextures(1, &tex.ID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, tex.ID);
+
+    int width, height, nrChannels;
+    for (unsigned int i = 0; i < 6; i++)
+    {
+        unsigned char *data = stbi_load(skybox_names[i], &width, &height, &nrChannels, 0);
+        if (data)
+        {
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 
+                         0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
+            );
+            stbi_image_free(data);
+        }
+        else
+        {
+            stbi_image_free(data);
+			FATALERROR;
+        }
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+	float skyboxVertices[] = {
+    -1.0f,  1.0f, -1.0f,
+    -1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+     1.0f,  1.0f, -1.0f,
+    -1.0f,  1.0f, -1.0f,
+
+    -1.0f, -1.0f,  1.0f,
+    -1.0f, -1.0f, -1.0f,
+    -1.0f,  1.0f, -1.0f,
+    -1.0f,  1.0f, -1.0f,
+    -1.0f,  1.0f,  1.0f,
+    -1.0f, -1.0f,  1.0f,
+
+     1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+
+    -1.0f, -1.0f,  1.0f,
+    -1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f, -1.0f,  1.0f,
+    -1.0f, -1.0f,  1.0f,
+
+    -1.0f,  1.0f, -1.0f,
+     1.0f,  1.0f, -1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+    -1.0f,  1.0f,  1.0f,
+    -1.0f,  1.0f, -1.0f,
+
+    -1.0f, -1.0f, -1.0f,
+    -1.0f, -1.0f,  1.0f,
+     1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+    -1.0f, -1.0f,  1.0f,
+     1.0f, -1.0f,  1.0f
+};
+
+
+	ShaderHandle* sha = get_shader(skyboxShader);
+
+	LASTWRITES[skybox_frag] = Win32GetLastWriteTime(txt_file_names[skybox_frag]);
+	LASTWRITES[skybox_vert] = Win32GetLastWriteTime(txt_file_names[skybox_vert]);
+
+
+	char* vert_s = load_file(skybox_vert, NULL);
+	uint vertID = compile_shader(GL_VERTEX_SHADER, vert_s);
+	free(vert_s);
+
+	char* frag_s = load_file(skybox_frag, NULL);
+	uint fragID = compile_shader(GL_FRAGMENT_SHADER, frag_s);
+	free(frag_s);
+
+	sha->progId = glCreateProgram();
+	glAttachShader(sha->progId, vertID);
+	glAttachShader(sha->progId, fragID);
+
+	add_attribute(sha, "aPos");
+
+	link_shader(sha, vertID, fragID);
+	
+	use_shader(sha);
+	unuse_shader(sha);
+	
+	uint vao = 0;
+	uint vbo = 0;
+	glGenVertexArrays(1,&vao);
+	glGenBuffers(1,&vbo);
+	
+	assert(vao != 0 && vbo != 0);
+
+	glBindVertexArray(vao);
+	glBindBuffer(GL_ARRAY_BUFFER,vbo);
+
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (void*)0);
+
+
+	//glBindBuffer(GL_ARRAY_BUFFER,vbo);
+
+	//glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 36, NULL, GL_STATIC_DRAW);
+	//glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * 36, skyboxVertices);
+
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
+
+	glBindVertexArray(0);
+	*skyvao = vao;
+	*skyvbo = vbo;
+    return tex.ID;
+}
+
 char* load_file_from_source(const char* file, int* size)
 {
 	char *source = NULL;
@@ -304,49 +428,7 @@ typedef struct
 	uint			shader;
 } Light;
 
-	float verticesBOX[] = {
-		-0.5f, -0.5f, -0.5f,
-		0.5f, -0.5f, -0.5f, 
-		0.5f,  0.5f, -0.5f, 
-		0.5f,  0.5f, -0.5f, 
-		-0.5f,  0.5f, -0.5f,
-		-0.5f, -0.5f, -0.5f,
-
-		-0.5f, -0.5f,  0.5f,
-		0.5f, -0.5f,  0.5f, 
-		0.5f,  0.5f,  0.5f, 
-		0.5f,  0.5f,  0.5f, 
-		-0.5f,  0.5f,  0.5f,
-		-0.5f, -0.5f,  0.5f,
-
-		-0.5f,  0.5f,  0.5f,
-		-0.5f,  0.5f, -0.5f,
-		-0.5f, -0.5f, -0.5f,
-		-0.5f, -0.5f, -0.5f,
-		-0.5f, -0.5f,  0.5f,
-		-0.5f,  0.5f,  0.5f,
-
-		0.5f,  0.5f,  0.5f, 
-		0.5f,  0.5f, -0.5f, 
-		0.5f, -0.5f, -0.5f, 
-		0.5f, -0.5f, -0.5f, 
-		0.5f, -0.5f,  0.5f, 
-		0.5f,  0.5f,  0.5f, 
-
-		-0.5f, -0.5f, -0.5f,
-		0.5f, -0.5f, -0.5f, 
-		0.5f, -0.5f,  0.5f, 
-		0.5f, -0.5f,  0.5f, 
-		-0.5f, -0.5f,  0.5f,
-		-0.5f, -0.5f, -0.5f,
-
-		-0.5f,  0.5f, -0.5f,
-		0.5f,  0.5f, -0.5f, 
-		0.5f,  0.5f,  0.5f, 
-		0.5f,  0.5f,  0.5f, 
-		-0.5f,  0.5f,  0.5f,
-		-0.5f,  0.5f, -0.5f,
-	};
+	
 ModelHandle TeaPot;
 void init_light(Light* l)
 {
@@ -379,49 +461,6 @@ void init_light(Light* l)
 
 
 }
-float vertices[] = {
-	-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,	    0.0f,  0.0f, -1.0f,
-	0.5f, -0.5f, -0.5f,  1.0f, 0.0f,	    0.0f,  0.0f, -1.0f,
-	0.5f,  0.5f, -0.5f,  1.0f, 1.0f,	    0.0f,  0.0f, -1.0f,
-	0.5f,  0.5f, -0.5f,  1.0f, 1.0f,	    0.0f,  0.0f, -1.0f,
-	-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,	    0.0f,  0.0f, -1.0f,
-	-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,	    0.0f,  0.0f, -1.0f,
-
-	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,		0.0f,  0.0f, 1.0f,
-	0.5f, -0.5f,  0.5f,  1.0f, 0.0f,		0.0f,  0.0f, 1.0f,
-	0.5f,  0.5f,  0.5f,  1.0f, 1.0f,		0.0f,  0.0f, 1.0f,
-	0.5f,  0.5f,  0.5f,  1.0f, 1.0f,		0.0f,  0.0f, 1.0f,
-	-0.5f,  0.5f,  0.5f,  0.0f, 1.0f,		0.0f,  0.0f, 1.0f,
-	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,		0.0f,  0.0f, 1.0f,
-
-	-0.5f,  0.5f,  0.5f,  1.0f, 0.0f,		  -1.0f,  0.0f,  0.0f,
-	-0.5f,  0.5f, -0.5f,  1.0f, 1.0f,		  -1.0f,  0.0f,  0.0f,
-	-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,		  -1.0f,  0.0f,  0.0f,
-	-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,		  -1.0f,  0.0f,  0.0f,
-	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,		  -1.0f,  0.0f,  0.0f,
-	-0.5f,  0.5f,  0.5f,  1.0f, 0.0f,		  -1.0f,  0.0f,  0.0f,
-
-	0.5f,  0.5f,  0.5f,  1.0f, 0.0f,		 1.0f,  0.0f,  0.0f,
-	0.5f,  0.5f, -0.5f,  1.0f, 1.0f,		 1.0f,  0.0f,  0.0f,
-	0.5f, -0.5f, -0.5f,  0.0f, 1.0f,		 1.0f,  0.0f,  0.0f,
-	0.5f, -0.5f, -0.5f,  0.0f, 1.0f,		 1.0f,  0.0f,  0.0f,
-	0.5f, -0.5f,  0.5f,  0.0f, 0.0f,		 1.0f,  0.0f,  0.0f,
-	0.5f,  0.5f,  0.5f,  1.0f, 0.0f,		 1.0f,  0.0f,  0.0f,
-
-	-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,		  0.0f, -1.0f,  0.0f,
-	0.5f, -0.5f, -0.5f,  1.0f, 1.0f,		  0.0f, -1.0f,  0.0f,
-	0.5f, -0.5f,  0.5f,  1.0f, 0.0f,		  0.0f, -1.0f,  0.0f,
-	0.5f, -0.5f,  0.5f,  1.0f, 0.0f,		  0.0f, -1.0f,  0.0f,
-	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,		  0.0f, -1.0f,  0.0f,
-	-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,		  0.0f, -1.0f,  0.0f,
-
-	-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,		  0.0f,  1.0f,  0.0f,
-	0.5f,  0.5f, -0.5f,  1.0f, 1.0f,		  0.0f,  1.0f,  0.0f,
-	0.5f,  0.5f,  0.5f,  1.0f, 0.0f,		  0.0f,  1.0f,  0.0f,
-	0.5f,  0.5f,  0.5f,  1.0f, 0.0f,		  0.0f,  1.0f,  0.0f,
-	-0.5f,  0.5f,  0.5f,  0.0f, 0.0f,		  0.0f,  1.0f,  0.0f,
-	-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,		  0.0f,  1.0f,  0.0f,
-};
 
 
 
@@ -450,7 +489,7 @@ int main()
 	model_cache = engine.model_cache;
 	memset(engine.textureCache, 0, sizeof(Texture)*maxpicfiles);
 	memset(engine.model_cache, 0, sizeof(ModelHandle)*maxmodelfiles);
-	memset(engine.skyBoxCache, 0, sizeof(ModelHandle)*maxmodelfiles);
+	//memset(engine.skyBoxCache, 0, sizeof(ModelHandle)*maxmodelfiles);
 
 
 	glfwInit();
@@ -492,81 +531,6 @@ int main()
 	bg.r = 0.10f, bg.g = 0.18f, bg.b = 0.24f, bg.a = 1.0f;
 
 #define reee
-#ifdef vanha
-
-	//char* you = "vertexPosition"; // , "uv", "normal");
-	//ShaderHandle shader = create_shader_stof(3, vert_sha, frag_sha, you);
-	ShaderHandle shader = { 0 };
-	char* vert_s = load_file(vert_sha,NULL);
-	uint vertID = compile_shader(GL_VERTEX_SHADER, vert_s);
-	free(vert_s);
-
-	char* frag_s = load_file(frag_sha,NULL);
-	uint fragID = compile_shader(GL_FRAGMENT_SHADER, frag_s);
-	free(frag_s);
-	shader.progId = glCreateProgram();
-	glAttachShader(shader.progId, vertID);
-	glAttachShader(shader.progId, fragID);
-
-	add_attribute(&shader, "vertexPosition");
-	add_attribute(&shader, "uv");
-	add_attribute(&shader, "normal");
-
-
-	link_shader(&shader, vertID, fragID);
-
-	use_shader(&shader);
-	unuse_shader(&shader);
-
-
-	uint VBO, VAO/*, EBO;*/;
-	glGenVertexArrays(1, &VAO);
-	glGenBuffers(1, &VBO);
-	//glGenBuffers(1, &EBO);
-
-	glBindVertexArray(VAO);
-
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
-	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-	//glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-	// position attribute
-	glCheckError();
-
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
-
-	glCheckError();
-
-	// texture coord attribute
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-	glEnableVertexAttribArray(1);
-
-	//normal
-	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
-	glEnableVertexAttribArray(2);
-
-	glCheckError();
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-	glBindVertexArray(0);
-	glCheckError();
-
-
-	Texture box = loadTexture(laatikko);
-
-
-	glCheckError();
-
-	use_shader(&shader);
-	set_uniform_int(&shader, "tex", 0);
-
-	glCheckError();
-
-#endif // reee
 
 	
 
@@ -588,49 +552,9 @@ int main()
 
 	glCheckError();
 
-#ifdef vanha
-
-	uint modelLOC = glGetUniformLocation(shader.progId, "model");
-	uint viewLOC = glGetUniformLocation(shader.progId, "view");
-	uint projectionLOC = glGetUniformLocation(shader.progId, "projection");
-
-	glCheckError();
-
-/*
-	glUniformMatrix4fv(modelLOC, 1, GL_FALSE, (GLfloat*)model.mat);
-	glUniformMatrix4fv(viewLOC, 1, GL_FALSE, (GLfloat*)view.mat);
-	glUniformMatrix4fv(projectionLOC, 1, GL_FALSE, (GLfloat*)projection.mat)*/;
-
-	
-	glCheckError();
-
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, box.ID);
-	glCheckError();
-
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	unuse_shader(&shader);
-#endif
 	glEnable(GL_DEPTH_TEST);
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	Light light = { 0 };
-	init_light(&light);
-
-	glCheckError();
-
-	//vec3 camDir = { 0.f , 0.f , -1.f };
-	/*EngineCamera camera = { 0 };
-	init_engine_camera(&camera);*/
-
-
-	mat4 lampRotater = { 0 };
-	vec3 lampAxis = { 1.f, 0.f, 0.f};
-	create_rotate_mat4(&lampRotater, lampAxis, deg_to_rad(2.f));
-	vec3 oldLightPos = { 0.f , 5.f , 0.f };
 	
-
-
-
 	Renderer rend = { 0 };
 	init_renderer(&rend);
 	const double dt = 1.0 / 60.0;
@@ -652,7 +576,9 @@ int main()
 	//DebugRend debugRned = { 0 };
 	init_debugrend(&engine.drend);
 
-	
+	mat4 lampRotater = { 0 };
+	vec3 lampAxis = { 1.f, 0.f, 0.f};
+	create_rotate_mat4(&lampRotater, lampAxis, deg_to_rad(2.f));
 
 	LightValues pro = { 0 };
 	//vec3 lightcolor = { sinf(0.2f* glfwGetTime()),sinf( 0.7f* glfwGetTime()), sinf(1.3f * glfwGetTime()) };
@@ -661,7 +587,7 @@ int main()
 	vec3 ambL = { 0.05f, 0.05f, 0.05f };
 	//scale_vec3(&ambL, &ambL, 0.2f);
 	vec3 specL = { 1.0f, 1.0f, 1.0f };
-
+	vec3 oldLightPos = {2.f , 2.f , 2.f};
 	pro.position = oldLightPos;
 	pro.ambient = ambL;
 	pro.diffuse = diffL;
@@ -683,12 +609,14 @@ int main()
 	dispose_game = load_DLL_function(game_dll, "dispose_game");
 	for(int i = 0; i < maxpicfiles;i++)
 	{
-		loadTexture(engine.textureCache,i,GL_TEXTURE_2D,GL_REPEAT,pic_file_names);
+		loadTexture(i);
 	}
 	//for(int i = 0 ;i < maxskyboxfiles; i++)
 	//{
-		//loadTexture(engine.skyBoxCache,i,GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,GL_CLAMP_TO_EDGE,skybox_names);
+		//loadTexture(engine.skyBoxCache,i,GL_TEXTURE_CUBE_MAP,GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,GL_CLAMP_TO_EDGE,skybox_names);
 	//}
+	engine.skyBoxID = load_skybox(&engine.skyBoxvao,&engine.skyBoxvbo);
+	glCheckError();
 	for (int i = 0; i < maxmodelfiles; i++)
 	{
 		load_model(i);
@@ -789,6 +717,31 @@ int main()
 		render_models(&rend, engine.renderArray, engine.sizeOfRenderArray, &engine.camera, pro);
 		render_debug_lines(&engine.drend,&engine.camera.view);
 		glCheckError();
+
+
+
+		glActiveTexture(GL_TEXTURE0);
+		ShaderHandle* skysha = get_shader(skyboxShader);
+		glDepthFunc(GL_LEQUAL);
+		//skyboxShader.use();
+		glBindVertexArray(engine.skyBoxvao);
+		use_shader(skysha);
+		// ... set view and projection matrix
+		//mat4 projection = { 0 };
+		//perspective(&projection, deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 100.f);
+		set_mat4(skysha,"projection",projection.mat);
+		mat4 skyView = engine.camera.view;
+		skyView.mat[3][0] = 0;
+		skyView.mat[3][1] = 0;
+		skyView.mat[3][2] = 0;
+		skyView.mat[3][3] = 1;
+		set_mat4(skysha,"view",skyView.mat);
+		glBindVertexArray(engine.skyBoxvao);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, engine.skyBoxID);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+		glDepthFunc(GL_LESS);
+		unuse_shader(skysha);
+		glBindVertexArray(0);
 
 		render_nuklear();
 

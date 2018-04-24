@@ -411,85 +411,86 @@ inline void render_model(const ModelHandle* handle, const vec3 pos, const vec3 r
 
 inline void render_boxes(ShaderHandle* handle, uint VBO, uint VAO, uint projectionLOC, uint modelLoc, uint viewLOC, vec3 lightpos, EngineCamera* camera, mat4* projection)
 {
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	use_shader(handle);
+	FATALERROR;
+	// glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	// glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), NULL, GL_STATIC_DRAW);
+	// glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+	// glBindBuffer(GL_ARRAY_BUFFER, 0);
+	// use_shader(handle);
 
 
 
-	vec3 objcolor = { 1.f,1.0f,1.0f };
-	vec3 lightcolor = { 1.f,1.f,1.f };
+	// vec3 objcolor = { 1.f,1.0f,1.0f };
+	// vec3 lightcolor = { 1.f,1.f,1.f };
 
 
-	set_vec3(handle, "ViewPos", &camera->cameraPos);
-	typedef struct
-	{
-		vec3 ambient;
-		vec3 diffuse;
-		vec3 specular;
-		float shininess;
-	} Material;
+	// set_vec3(handle, "ViewPos", &camera->cameraPos);
+	// typedef struct
+	// {
+	// 	vec3 ambient;
+	// 	vec3 diffuse;
+	// 	vec3 specular;
+	// 	float shininess;
+	// } Material;
 
-	Material cube = { 0 };
-	vec3 amb = { 0.9f, 0.9f, 0.9f };
-	vec3 diff = { 0.9f, 0.9f, 0.9f };
-	vec3 spec = { 0.9f, 0.9f, 0.9f };
-	float shine = 12.0f;
-	cube.ambient = amb;
-	cube.diffuse = diff;
-	cube.specular = spec;
-	cube.shininess = shine;
-
-
-	set_vec3(handle, "material.specular", &cube.diffuse);
-	set_uniform_float(handle, "material.shininess", cube.shininess);
+	// Material cube = { 0 };
+	// vec3 amb = { 0.9f, 0.9f, 0.9f };
+	// vec3 diff = { 0.9f, 0.9f, 0.9f };
+	// vec3 spec = { 0.9f, 0.9f, 0.9f };
+	// float shine = 12.0f;
+	// cube.ambient = amb;
+	// cube.diffuse = diff;
+	// cube.specular = spec;
+	// cube.shininess = shine;
 
 
+	// set_vec3(handle, "material.specular", &cube.diffuse);
+	// set_uniform_float(handle, "material.shininess", cube.shininess);
 
-	LightValues pro = { 0 };
-	pro.position = lightpos;
-	vec3 ambL = { 0.7f, 0.7f, 0.7f };
-	vec3 diffL = { 0.5f, 0.5f, 0.5f };
-	vec3 specL = { 1.0f, 1.0f, 1.0f };
-	pro.ambient = ambL;
-	pro.diffuse = diffL;
-	pro.specular = specL;
 
-	vec3 ldir = { -0.2f, -1.0f, -0.3f };
-	//set_vec3(&shader, "light.direction", &ldir);
-	set_vec3(handle, "light.position", &lightpos);
-	set_vec3(handle, "light.ambient", &pro.ambient);
-	set_vec3(handle, "light.diffuse", &pro.diffuse);
-	set_vec3(handle, "light.specular", &pro.diffuse);
 
-	set_uniform_float(handle, "light.constant", 1.0f);
-	set_uniform_float(handle, "light.linear", 0.1f);
-	set_uniform_float(handle, "light.quadratic", 0.032f);
+	// LightValues pro = { 0 };
+	// pro.position = lightpos;
+	// vec3 ambL = { 0.7f, 0.7f, 0.7f };
+	// vec3 diffL = { 0.5f, 0.5f, 0.5f };
+	// vec3 specL = { 1.0f, 1.0f, 1.0f };
+	// pro.ambient = ambL;
+	// pro.diffuse = diffL;
+	// pro.specular = specL;
 
-	glUniformMatrix4fv(viewLOC, 1, GL_FALSE, (GLfloat*)camera->view.mat);
+	// vec3 ldir = { -0.2f, -1.0f, -0.3f };
+	// //set_vec3(&shader, "light.direction", &ldir);
+	// set_vec3(handle, "light.position", &lightpos);
+	// set_vec3(handle, "light.ambient", &pro.ambient);
+	// set_vec3(handle, "light.diffuse", &pro.diffuse);
+	// set_vec3(handle, "light.specular", &pro.diffuse);
 
-	perspective(projection, deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 100.f);
-	glUniformMatrix4fv(projectionLOC, 1, GL_FALSE, (GLfloat*)projection->mat);
-	glBindVertexArray(VAO);
+	// set_uniform_float(handle, "light.constant", 1.0f);
+	// set_uniform_float(handle, "light.linear", 0.1f);
+	// set_uniform_float(handle, "light.quadratic", 0.032f);
 
-	mat4 model = { 0 };
-	identity(&model);
-	vec3 axis = { 1.f,0.f,0.f };
-	for (int i = 0; i < 5; i++)
-	{
-		/*vec3 Rotation = { i * 10, i * 5 , i * 20 };
-		render_model(&TeaPot, cubepositions[i], Rotation, 0.5f, modelLOC)*/;
-	translate_mat4(&model, &model, cubepositions[i]);
-	rotate_mat4(&model, &model, axis,/*(float)glfwGetTime()*/1 * deg_to_rad(0));
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, (GLfloat*)model.mat);
-	glDrawArrays(GL_TRIANGLES, 0, 36);
-	}
+	// glUniformMatrix4fv(viewLOC, 1, GL_FALSE, (GLfloat*)camera->view.mat);
 
-	glBindVertexArray(0);
+	// perspective(projection, deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 100.f);
+	// glUniformMatrix4fv(projectionLOC, 1, GL_FALSE, (GLfloat*)projection->mat);
+	// glBindVertexArray(VAO);
 
-	unuse_shader(handle);
+	// mat4 model = { 0 };
+	// identity(&model);
+	// vec3 axis = { 1.f,0.f,0.f };
+	// for (int i = 0; i < 5; i++)
+	// {
+	// 	/*vec3 Rotation = { i * 10, i * 5 , i * 20 };
+	// 	render_model(&TeaPot, cubepositions[i], Rotation, 0.5f, modelLOC)*/;
+	// translate_mat4(&model, &model, cubepositions[i]);
+	// rotate_mat4(&model, &model, axis,/*(float)glfwGetTime()*/1 * deg_to_rad(0));
+	// glUniformMatrix4fv(modelLoc, 1, GL_FALSE, (GLfloat*)model.mat);
+	// glDrawArrays(GL_TRIANGLES, 0, 36);
+	// }
+
+	// glBindVertexArray(0);
+
+	// unuse_shader(handle);
 }
 inline void render_light(Light light,EngineCamera* camera, mat4* projection, vec3 lightpos)
 {

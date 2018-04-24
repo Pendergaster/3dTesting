@@ -13,6 +13,7 @@ enum
 	SHA_PROG_NO_UV,
 	LIGHT,
 	DEBUG_PROG,
+	skyboxShader,
 	maxshaderprogs
 };
 
