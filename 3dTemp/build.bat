@@ -71,20 +71,10 @@ popd
 
 
 IF /I "%1"=="run" (
-pushd DebugBin
-main.exe
-
+chdir %~dp0
+DebugBin\main.exe
 popd
 )
-
-
-
-
-
-
-
-
-
 
 ENDLOCAL
 REM sama kuin EOF

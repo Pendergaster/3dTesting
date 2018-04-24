@@ -153,7 +153,7 @@ inline void init_renderer(Renderer *rend)
 
 
 
-inline void render_models(const Renderer *rend,const renderData* data,const uint numData,const EngineCamera* camera,const LightValues light)
+inline void render_models(const Renderer *rend,const renderData** data,const uint numData,const EngineCamera* camera,const LightValues light)
 {
 	if (numData == 0)return;
 	ShaderHandle* withTex = get_shader(rend->withTex);
@@ -195,22 +195,22 @@ inline void render_models(const Renderer *rend,const renderData* data,const uint
 	{
 		mat4 model = { 0 };
 		identity(&model);
-		translate_mat4(&model, &model, data[i].position);
-		rotate_mat4_Z(&model, deg_to_rad(data[i].Rotation.z));
-		rotate_mat4_Y(&model, deg_to_rad(data[i].Rotation.y));
-		rotate_mat4_X(&model, deg_to_rad(data[i].Rotation.x));
-		scale_mat4(&model, data[i].scale);
+		translate_mat4(&model, &model, data[i]->position);
+		rotate_mat4_Z(&model, deg_to_rad(data[i]->Rotation.z));
+		rotate_mat4_Y(&model, deg_to_rad(data[i]->Rotation.y));
+		rotate_mat4_X(&model, deg_to_rad(data[i]->Rotation.x));
+		scale_mat4(&model, data[i]->scale);
 
 		glCheckError();
-		set_vec3(withTex, "material.specular", &data[i].material.specular);
-		set_uniform_float(withTex, "material.shininess", data[i].material.shininess);
+		set_vec3(withTex, "material.specular", &data[i]->material.specular);
+		set_uniform_float(withTex, "material.shininess", data[i]->material.shininess);
 		glCheckError();
 
 		glUniformMatrix4fv(rend->modelLOCtex, 1, GL_FALSE, (GLfloat*)model.mat);
 
-		glBindTexture(GL_TEXTURE_2D, textureCache[ data[i].material.diffuse].ID);
+		glBindTexture(GL_TEXTURE_2D, textureCache[ data[i]->material.diffuse].ID);
 		glActiveTexture(GL_TEXTURE0);
-		ModelHandle* m = &model_cache[data[i].modelId];
+		ModelHandle* m = &model_cache[data[i]->modelId];
 		glBindVertexArray(m->vao);
 		glDrawArrays(GL_TRIANGLES, 0, m->vertexsize);
 	}
@@ -223,7 +223,7 @@ inline void render(Renderer* rend,const int modelID,const vec3 pos, const vec3 r
 {
 	ModelHandle* m = &model_cache[modelID];
 
-	//käytä texturoitua
+	//kï¿½ytï¿½ texturoitua
 
 	//if (m->texcoordbuffer != NULL && texid != 0)
 	//{
@@ -303,7 +303,7 @@ inline void render(Renderer* rend,const int modelID,const vec3 pos, const vec3 r
 
 #if 0
 	}
-	// käytä normaalia
+	// kï¿½ytï¿½ normaalia
 	else
 
 	{
@@ -341,7 +341,7 @@ inline void render(Renderer* rend,const int modelID,const vec3 pos, const vec3 r
 
 		//printf("CAMPOS %f , %f , %f\n", camera->cameraPos.x, camera->cameraPos.y, camera->cameraPos.z);
 		//aseta materiaalit
-		set_vec3(noTex, "material.diffuse", &material.diffuse);		//väri vec3
+		set_vec3(noTex, "material.diffuse", &material.diffuse);		//vï¿½ri vec3
 		glCheckError();
 
 		set_vec3(noTex, "material.specular", &material.specular);	
@@ -624,4 +624,4 @@ inline void render_model_normals(uint VBO, uint normalbuffer, ShaderHandle* hand
 #endif
 }
 
-//todo push to renderer sort ja älä bindaa vertexejä uudestaan
+//todo push to renderer sort ja ï¿½lï¿½ bindaa vertexejï¿½ uudestaan

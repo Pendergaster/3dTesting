@@ -198,7 +198,7 @@ static inline void update_engine_camera(EngineCamera* c, vec2 newMousePos, vec2 
 	cross_product(&c->camUp, &c->camUp, &c->cameraDir);
 	normalize_vec3(&c->camUp);
 	//normalize_vec3(&front);
-	// fron pitäs olla 0 0 2
+	// fron pitï¿½s olla 0 0 2
 	create_lookat_mat4(&c->view, &c->cameraPos, &front, &c->camUp);
 }
 
@@ -359,7 +359,7 @@ typedef struct
 	EngineCamera	camera;
 	ModelHandle		model_cache[maxmodelfiles];
 	Texture			textureCache[maxpicfiles];
-	renderData*		renderArray;
+	renderData**	renderArray;
 	uint			sizeOfRenderArray;
 	void*			userdata;
 	DebugRend		drend;
