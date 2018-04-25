@@ -33,11 +33,20 @@ inline void* DEBUG_CALLOC(int COUNT, int SIZE)
 
 CREATEDYNAMICARRAY(renderData, renderArray)
 
+enum
+{
+	Flocker,
+	Player
+};
+
 typedef struct
 {
+	uint		type;
 	renderData*	base;
 	vec3		dims;
 	uint		treeIndex;
+	vec3		velocity;
+	vec3		acceleration;
 } Object;
 
 static const Object DEFAULT_OBJECT = {0};
@@ -56,11 +65,10 @@ typedef struct
 	renderDataBuffer	freeRendList;
 } ObjectAllocator;
 
-#define POOL_SIZE 1000
+#define POOL_SIZE 5000
 
 static inline void init_objectallocator(ObjectAllocator* al)
 {
-	INITARRAY(al->pools);
 	INITARRAY(al->pools);
 	INITARRAY(al->freelist);
 	INITARRAY(al->freeRendList);
@@ -71,7 +79,18 @@ static inline void init_objectallocator(ObjectAllocator* al)
 	(*ar) = malloc(POOL_SIZE * sizeof(Object) + POOL_SIZE * sizeof(renderData));
 	GET_NEW_OBJ(al->rendPools,rd);
 	(*rd) = (renderData*)((*ar)+POOL_SIZE);
-int dist = (*ar) -((Object*)(*rd));	
+}
+static void inline dispose_object_allocator(ObjectAllocator* al)
+{
+	while(al->pools.num)
+	{
+		Object* del = NULL;
+		POP_ARRAY_COPY(al->pools,del); 
+		free(del);
+	}
+	DISPOSE_ARRAY(al->pools);
+	DISPOSE_ARRAY(al->freelist);
+	DISPOSE_ARRAY(al->freeRendList);
 }
 
 
@@ -130,6 +149,7 @@ typedef struct
 	ObjectAllocator		obAll;
 	//Object*			objects;
 	ObjectBuffer		objects;
+	ObjectBuffer		raybuffer;
 } Game;
 
 unsigned int rand_interval(unsigned int min, unsigned int max)
@@ -142,8 +162,8 @@ unsigned int rand_interval(unsigned int min, unsigned int max)
     /* Create equal size buckets all in a row, then fire randomly towards
      * the buckets until you land in one of them. All buckets are equally
      * likely. If you land off the end of the line of buckets, try again. */
-    do
-    {
+    do{
+    
         r = rand();
     } while (r >= limit);
 
@@ -151,7 +171,9 @@ unsigned int rand_interval(unsigned int min, unsigned int max)
 }
 
 
-#define NUM_OBJS 5
+#define NUM_OBJS 200
+#define MAX_FLOCK_VEL 0.3f
+
 EXPORT void init_game(void* p)
 {
 	Engine* eng = (Engine*)p;
@@ -162,58 +184,50 @@ EXPORT void init_game(void* p)
 	printf("game initedREEEEEEE!");
 	INITARRAY(game->rend);
 	INITARRAY(game->objects);
+	INITARRAY(game->raybuffer);
 	init_objectallocator(&game->obAll);
-
-
-
-
-
-
 
 
 	renderData* planet = NULL;
 
 
-	// for (int i = game->rend.num; i < NUM_OBJS; i++)
-	// {
-	// 	GET_NEW_OBJ(game->rend, planet);
-	// 	*planet = DEFAULT_RENDERDATA;
-	// 	planet->material.diffuse = MoonTexture;
-	// 	planet->modelId = Planet1;
-	// 	planet->position.x = i * 5.f;//rand_interval(0,15);
-	// 	planet->position.y = 0;//rand_interval(0,15);
-	// 	planet->position.z = 0;//rand_interval(0,15);
-	// 	// for(int i2 = 0, i2 < game->rend.num;i2++)
-	
-	// }
-
 	eng->renderArray = game->rend.buff;
 	eng->sizeOfRenderArray = game->rend.num;
 	init_tree(&game->tree);
-	//Object* objects = calloc(NUM_OBJS,sizeof(Object));
 
+	for(int i = 0; i < NUM_OBJS; i++)
+	{
 
-	// for(int i = 0; i < game->rend.num; i++)
+		Object* nob = new_object(&game->obAll);
+		renderData* planet = nob->base;
+		planet->material.diffuse = MoonTexture;
+		planet->modelId = Planet1;
+		planet->position.x = (float)rand_interval(0,120) - 60.f;
+		planet->position.y = (float)rand_interval(0,120) - 60.f;
+		planet->position.z = (float)rand_interval(0,120) - 60.f;	
+
+		nob->velocity.x = ((float)rand_interval(0,30) - 15.f) * 0.1f;
+		nob->velocity.y = ((float)rand_interval(0,30) - 15.f) * 0.1f;
+		nob->velocity.z = ((float)rand_interval(0,30) - 15.f) * 0.1f;
+
+		reduce_vec3_inplace(&nob->velocity,MAX_FLOCK_VEL);
+
+		PUSH_NEW_OBJ(game->objects,nob);
+		PUSH_NEW_OBJ(game->rend,planet);
+		nob->dims = eng->model_cache[Planet1].nativeScale;
+		nob->treeIndex = insert_to_tree(&game->tree,nob);
+	}
+
+	// if(is_key_activated(&eng->inputs,KEY_O))
 	// {
-	// 	objects[i].base = &game->rend.buff[i];
-	// 	objects[i].dims = eng->model_cache[Planet1].nativeScale;
+	// 	remove_node(&game->tree,BACK(game->objects)->treeIndex);
+	// 	game->objects.num--;
+	// 	game->rend.num--;
 	// }
-	// uint inds[NUM_OBJS];
-	// for(int i = 0; i < NUM_OBJS; i++)
-	// {
-	// 	inds[i] = insert_to_tree(&game->tree,&objects[i]);
-	// 	objects[i].treeIndex = inds[i];
-	// }
-	// printf("INDEXES\n");
-	// for(int i = 0; i < NUM_OBJS; i++)
-	// {
-	// 	printf("%d\n",inds[i]);
-	// 	update_object_in_tree(&game->tree,inds[i]);
-	// }
-	// game->objects = objects;
-	//force_fit_parent(&game->tree, &(game->tree.allocator[game->tree.rootIndex]));
+
+	
 }
-
+void update_objects(ObjectBuffer* objs,float dt,ObjectBuffer* buffer,AABBtree* tree);
 EXPORT void update_game(void* p)
 {
 	Engine* eng = (Engine*)p;
@@ -279,30 +293,8 @@ EXPORT void update_game(void* p)
 	// 	game->objects[i].treeIndex = update_object_in_tree(&game->tree,game->objects[i].treeIndex);
 	// }
 	//BACK(game->rend).position.x += 0.1f;
-
-	if(is_key_activated(&eng->inputs,KEY_P))
-	{
-		Object* nob = new_object(&game->obAll);
-		renderData* planet = nob->base;
-		//GET_NEW_OBJ(game->rend, planet);
-		// printf("ALLOCATOR POOLS %d INDEX %d \n,",game->obAll.pools.num,game->obAll.currentIndex);
-		planet->material.diffuse = MoonTexture;
-		planet->modelId = Planet1;
-		planet->position.x = rand_interval(0,60.f);
-		planet->position.y = rand_interval(0,60.f);
-		planet->position.z = rand_interval(0,60.f);	
-
-		PUSH_NEW_OBJ(game->objects,nob);
-		PUSH_NEW_OBJ(game->rend,planet);
-		nob->dims = eng->model_cache[Planet1].nativeScale;
-		nob->treeIndex = insert_to_tree(&game->tree,nob);
-	}
-	if(is_key_activated(&eng->inputs,KEY_O))
-	{
-		remove_node(&game->tree,BACK(game->objects)->treeIndex);
-		game->objects.num--;
-		game->rend.num--;
-	}
+	update_objects(&game->objects,eng->DT,&game->raybuffer,&game->tree);
+	
 
 	ObjectBuffer temp;
 	INITARRAY(temp);
@@ -333,11 +325,84 @@ EXPORT void dispose_game(void* p)
 	Game* game = eng->userdata;
 	dispose_tree(&game->tree);
 	DISPOSE_ARRAY(game->rend);
+	DISPOSE_ARRAY(game->objects);
+	DISPOSE_ARRAY(game->raybuffer)
+	dispose_object_allocator(&game->obAll);
 	//DISPOSE_ARRAY(&game->obAll.pools);
 	//DISPOSE_ARRAY(&game->obAll.freelist);
 	//DISPOSE_ARRAY(&game->objects);
 	free(game);
-	printf("game disposed!");
-	printf("MEMTRACK = %d", MEMTRACK);
-	//assert(MEMTRACK == 0);
+	printf("game disposed!\n");
+	printf("MEMTRACK = %d \n", MEMTRACK);
+	assert(MEMTRACK == 0);
+}
+
+#define SEPARATION_MULTPLIER 1.5f
+#define ALINGMENT_MULTPLIER 1.f
+#define COHESION_MULTPLIER 1.f
+#define RAY_AREA 20.f
+#define MAX_FORCE 0.1f
+#define MAX_SPEED 4.f
+
+void update_objects(ObjectBuffer* objs,float dt,ObjectBuffer* buffer,AABBtree* tree)
+{
+	for(int i = 0;i < objs->num; i++)
+	{
+		query_area(tree,objs->buff[i]->base->position,RAY_AREA,buffer);
+		//SEPARATION
+		
+		//ALINGMENT
+		vec3 alingvel = {0};
+		if(buffer->num > 1) // not myself
+		{
+			for(int i = 0; i < buffer->num; i++)
+			{
+				if(objs->buff[i] != buffer->buff[i])
+				add_vec3(&alingvel,&alingvel,&buffer->buff[i]->velocity);
+			}
+			alingvel.x /= buffer->num;
+			alingvel.y /= buffer->num;
+			alingvel.z /= buffer->num;
+			normalize_vec3(&alingvel);
+			scale_vec3(&alingvel,&alingvel,MAX_SPEED);
+			sub_vec3(&alingvel,&alingvel,&objs->buff[i]->velocity);
+			reduce_vec3_inplace(&alingvel,MAX_FORCE);
+		}
+		//COHEESIO
+		// vec3 cohesionvel = {0};
+		// if(buffer->num > 1)
+		// {
+		// 	for(int i = 0; i < buffer->num; i++)
+		// 	{
+		// 		if(objs->buff[i] != buffer->buff[i])
+		// 		add_vec3(&cohesionvel,&cohesionvel,&buffer->buff[i]->base->position);
+		// 	}
+		// 	cohesionvel.x /= buffer->num;
+		// 	cohesionvel.y /= buffer->num;
+		// 	cohesionvel.z /= buffer->num;
+		// 	normalize_vec3(&alingvel);
+		// 	scale_vec3(&alingvel,&alingvel,MAX_SPEED);
+		// 	sub_vec3(&alingvel,&alingvel,&objs->buff[i]->velocity);
+		// 	reduce_vec3_inplace(&alingvel,MAX_FORCE);
+		//}
+
+
+
+
+
+		add_vec3(&objs->buff[i]->acceleration,&objs->buff[i]->acceleration,&alingvel);
+		objs->buff[i]->velocity.x += objs->buff[i]->acceleration.x * dt;
+		objs->buff[i]->velocity.y += objs->buff[i]->acceleration.y * dt;
+		objs->buff[i]->velocity.z += objs->buff[i]->acceleration.z * dt;
+
+		objs->buff[i]->base->position.x += objs->buff[i]->velocity.x * dt;
+		objs->buff[i]->base->position.y += objs->buff[i]->velocity.y * dt;
+		objs->buff[i]->base->position.z += objs->buff[i]->velocity.z * dt;
+
+		objs->buff[i]->acceleration.x = 0;
+		objs->buff[i]->acceleration.y = 0;
+		objs->buff[i]->acceleration.z = 0;
+		buffer->num = 0;
+	}	
+	
 }

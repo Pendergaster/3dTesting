@@ -277,6 +277,15 @@ static inline void add_vec3(vec3* res, const vec3* lhv, const vec3* rhv)
 	res->y = lhv->y + rhv->y;
 	res->z = lhv->z + rhv->z;
 }
+static inline void reduce_vec3_inplace(vec3* v, float lenght)
+{
+	float l = vec3_lenght(v);	
+	if(l > lenght)
+	{
+		normalize_vec3(v);
+		scale_vec3(v,v,lenght);
+	}
+}
 static inline void add_vec4(vec4* res, const vec4* lhv, const vec4* rhv)
 {
 	res->x = lhv->x + rhv->x;
@@ -363,6 +372,8 @@ static inline void scale_mat4(mat4* m, const float s)
 			m->mat[x][y] *= s;
 
 }
+
+
 static inline void inverse_ma4(mat4* res, mat4* m)//assumes that matrix is invertable, implementation similar to linmath and glu
 {
 	float s[6];

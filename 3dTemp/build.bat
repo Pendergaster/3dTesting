@@ -102,9 +102,6 @@ REM nologo ei turhaa printtiä / /MD common runtime multithreaded   /   /link al
 cl -Zi -nologo %COMPILE_FLAGS% %game_includes% ..\game\game.c  /MD /LD /link  %libs% -LIBPATH:../libraries  
 popd
 
-
-
-
 )
 
 ENDLOCAL

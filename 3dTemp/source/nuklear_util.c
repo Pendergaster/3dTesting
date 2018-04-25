@@ -113,8 +113,9 @@ void render_nuklear()
 #endif // RENDEFRGUI
 }
 
-void show_engine_stats(struct nk_context *ctx,float fps,float frametime)
+ubyte show_engine_stats(struct nk_context *ctx,float fps,float frametime)
 {
+	ubyte ret = 0;
 	if (nk_begin(ctx, "Engine", nk_rect(10, 10, 200, 400), NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_SCALABLE | NK_WINDOW_MINIMIZABLE | NK_WINDOW_TITLE))
 	{
 		char str[100];
@@ -123,8 +124,15 @@ void show_engine_stats(struct nk_context *ctx,float fps,float frametime)
 		nk_label(ctx, str, NK_TEXT_LEFT);
 		sprintf(str, "frametime     %.2f", frametime);
 		nk_label(ctx, str, NK_TEXT_LEFT);
+ 		if (nk_button_label(ctx, "button")) 
+		{
+			ret = 1;			
+ 		}
+
 	}
 	nk_end(ctx);
+
+	return ret;
 }
 
 

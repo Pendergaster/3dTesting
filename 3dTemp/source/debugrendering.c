@@ -87,7 +87,7 @@ void render_debug_lines(DebugRend* rend, mat4* CamMat)
 	if (rend->numIndicies == 0) return;
 
 	mat4 projection = { 0 };
-	perspective(&projection, deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 100.f);
+	perspective(&projection, deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 10000.f);
 
 	use_shader(&shader_cache[DEBUG_PROG]);
 	set_mat4(&shader_cache[DEBUG_PROG], "projection", projection.mat);

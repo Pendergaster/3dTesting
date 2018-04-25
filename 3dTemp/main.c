@@ -231,7 +231,7 @@ uint load_skybox(uint* skyvao,uint* skyvbo)
   	Texture tex ={0};
     glGenTextures(1, &tex.ID);
     glBindTexture(GL_TEXTURE_CUBE_MAP, tex.ID);
-
+	//stbi_set_flip_vertically_on_load(1);
     int width, height, nrChannels;
     for (unsigned int i = 0; i < 6; i++)
     {
@@ -249,6 +249,9 @@ uint load_skybox(uint* skyvao,uint* skyvbo)
 			FATALERROR;
         }
     }
+
+	//stbi_set_flip_vertically_on_load(0);
+
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -548,7 +551,7 @@ int main()
 	translate_mat4(&view, &view, traVec);
 
 	mat4 projection = { 0 };
-	perspective(&projection, deg_to_rad(45.f), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 100.f);
+	perspective(&projection, deg_to_rad(45.f), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 10000.f);
 
 	glCheckError();
 
@@ -558,7 +561,7 @@ int main()
 	Renderer rend = { 0 };
 	init_renderer(&rend);
 	const double dt = 1.0 / 60.0;
-
+	engine.DT = dt;
 	double currentTime = glfwGetTime();
 	double accumulator = 0.0;
 
@@ -671,7 +674,15 @@ int main()
 			}
 		}
 
-		show_engine_stats(ctx,currentFps,currentFrameTime);
+		if( show_engine_stats(ctx,currentFps,currentFrameTime))
+		{
+			dispose_game(&engine);
+			load_DLL(&game_dll, "DebugBin/game.dll");
+			init_game = load_DLL_function(game_dll, "init_game");
+			update_game = load_DLL_function(game_dll, "update_game");
+			dispose_game = load_DLL_function(game_dll, "dispose_game");
+			init_game(&engine);
+		}
 		//overview(ctx);
 		//calculator(ctx);
 		while (accumulator >= dt)
@@ -708,7 +719,7 @@ int main()
 
 
 
-		perspective(&projection, deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 100.f);
+		perspective(&projection, deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 10000.f);
 
 		glCheckError();
 		vec3 pos = { 0 };

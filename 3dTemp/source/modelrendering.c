@@ -186,7 +186,7 @@ inline void render_models(const Renderer *rend,const renderData** data,const uin
 
 	mat4 projection = { 0 };
 
-	perspective(&projection, deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 100.f);
+	perspective(&projection, deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 10000.f);
 	glUniformMatrix4fv(rend->projectionLOCtex, 1, GL_FALSE, (GLfloat*)projection.mat);
 
 	glActiveTexture(GL_TEXTURE0);

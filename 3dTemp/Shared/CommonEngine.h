@@ -11,12 +11,12 @@
 		FILE(Planet1)		\
 
 #define TGA_FILES(FILE) \
-		FILE(drakeq_lf)\
-		FILE(drakeq_rt)\
-		FILE(drakeq_up)\
-		FILE(drakeq_dn)\
-		FILE(drakeq_ft)\
-		FILE(drakeq_bk)\
+		FILE(starfield_lf)\
+		FILE(starfield_rt)\
+		FILE(starfield_up)\
+		FILE(starfield_dn)\
+		FILE(starfield_ft)\
+		FILE(starfield_bk)\
 	
 
 #define GENERATE_ENUM(ENUM) ENUM,
@@ -381,6 +381,7 @@ typedef struct
 	uint			sizeOfRenderArray;
 	void*			userdata;
 	DebugRend		drend;
+	float			DT;
 } Engine;
 
 #ifdef GAME_SIDE
