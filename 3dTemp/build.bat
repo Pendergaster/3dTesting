@@ -37,7 +37,7 @@ SETLOCAL
 
 IF /I "%1"=="build_engine" (
 REM ECHO BUILDING_ENGINE
-SET COMPILE_FLAGS=-O2
+SET COMPILE_FLAGS=-Z7
 
 SET BUILD_DIR=DebugBin
 SET EXE_NAME=engine.exe
@@ -55,7 +55,7 @@ popd
 
 IF /I "%1"=="build_game" (
 REM ECHO BUILDING_ENGINE
-SET COMPILE_FLAGS=-O2
+SET COMPILE_FLAGS=-Z7
 
 SET BUILD_DIR=DebugBin
 SET LIB_NAME=engine
@@ -77,7 +77,7 @@ popd
 )
 
 IF /I "%1"=="build_all" (
-SET COMPILE_FLAGS=-Zi
+SET COMPILE_FLAGS=-Z7
 
 SET BUILD_DIR=DebugBin
 SET EXE_NAME=engine.exe
@@ -92,7 +92,7 @@ popd
 SET COMPILE_FLAGS=-Z7
 
 SET BUILD_DIR=DebugBin
-SET LIB_NAME=engine
+SET LIB_NAME=engin
 
 pushd DebugBin
 

@@ -41,19 +41,23 @@ enum
 
 typedef struct
 {
-	uint		type;
 	renderData*	base;
 	vec3		dims;
 	uint		treeIndex;
 	vec3		velocity;
 	vec3		acceleration;
+	uint		type;
+	union
+	{
+		float	curQueryTime;
+	};
 } Object;
 static const Object DEFAULT_OBJECT = {0};
 
 CREATEDYNAMICARRAY(Object*,ObjectBuffer);
 CREATEDYNAMICARRAY(renderData*,renderDataBuffer);
 
-#define NUM_OBJS 2000
+#define NUM_OBJS 10
 #include "AABBtree.c"
 
 typedef struct
@@ -172,6 +176,7 @@ unsigned int rand_interval(unsigned int min, unsigned int max)
 
 
 #define MAX_FLOCK_VEL 0.3f
+#define NUM_QUERIES_PER_SEC 10
 
 EXPORT void init_game(void* p)
 {
@@ -180,7 +185,6 @@ EXPORT void init_game(void* p)
 	init_engine(eng);
 	eng->userdata = game;
 	printf("game inited!");
-	printf("game initedREEEEEEE!");
 	INITARRAY(game->rend);
 	INITARRAY(game->objects);
 	INITARRAY(game->raybuffer);
@@ -209,6 +213,8 @@ EXPORT void init_game(void* p)
 		nob->velocity.y = ((float)rand_interval(0,30) - 15.f) * 0.1f;
 		nob->velocity.z = ((float)rand_interval(0,30) - 15.f) * 0.1f;
 
+		nob->type = Flocker;
+		nob->curQueryTime = (float)(i % NUM_QUERIES_PER_SEC) * 0.01f;
 		reduce_vec3_inplace(&nob->velocity,MAX_FLOCK_VEL);
 
 		PUSH_NEW_OBJ(game->objects,nob);
@@ -232,7 +238,7 @@ EXPORT void update_game(void* p)
 	Engine* eng = (Engine*)p;
 	Game* game = eng->userdata;
 
-	float camSpeed = 0.1f;
+	float camSpeed = 0.3f;
 
 
 	if (is_key_down(KEY_W,&eng->inputs))
@@ -273,25 +279,7 @@ EXPORT void update_game(void* p)
 	{
 		update_engine_camera(&eng->camera, eng->inputs.mousePos, eng->inputs.lastMousepos);
 	}
-	// struct Node* current = &game->tree.allocator[game->tree.allocator[game->tree.NodeArrayallocator.num].childIndexes[0]];
 	
-	// for(int i = 0; i < game->tree.NodeArrayallocator.num - game->tree.freelist.num; i++)
-	// {	
-	// 	//if(/*i == 4 || i == 3 || i == 6 || i == 1 || i == 5*/ game->tree.allocator[i].type == Branch)
-	// 	draw_abbREEE(&game->tree.allocator[i], &eng->drend);
-	// }
-	// if(is_key_activated(&eng->inputs,KEY_P))
-	// {
-	// 	remove_node(&game->tree,7);
-	//  	game->rend.num--;
-	// }
-	// game->objects[NUM_OBJS - 1].base->position.x += 0.05f;
-	// for(int i = 0; i < NUM_OBJS; i++)
-	// {
-	// 	//printf()
-	// 	game->objects[i].treeIndex = update_object_in_tree(&game->tree,game->objects[i].treeIndex);
-	// }
-	//BACK(game->rend).position.x += 0.1f;
 	update_objects(&game->objects,eng->DT,&game->raybuffer,&game->tree);
 	
 
@@ -301,6 +289,7 @@ EXPORT void update_game(void* p)
 	static float pp = 0.f;
 	pp += 0.02f;
 	vec3 potemp = {pp,pp,pp};
+	draw_index(&game->tree,&eng->drend,game->objects.buff[1]->treeIndex);
 	//if(game->objects.num > 2)
 	// query_area(&game->tree,potemp,10,&temp);
 	// for(int i = 0; i < temp.num; i++)
@@ -342,59 +331,63 @@ EXPORT void dispose_game(void* p)
 #define RAY_AREA 5.f
 #define MAX_FORCE 0.1f
 #define MAX_SPEED 4.f
+const float QUERY_FREQ = 1.f/(float)NUM_QUERIES_PER_SEC;
 
-
-uint update = 1;
 void update_objects(ObjectBuffer* objs,float dt,ObjectBuffer* buffer,AABBtree* tree)
 {
-	if (update)
-	{
 
+	int updates = 0;
 	for(int i = 0;i < objs->num; i++)
 	{
-		query_area(tree,objs->buff[i]->base->position,RAY_AREA,buffer);
-		//SEPARATION
-		
-		//ALINGMENT
-		vec3 alingvel = {0};
-		if(buffer->num > 1) // not myself
+
+		objs->buff[i]->curQueryTime += dt;
+		if(objs->buff[i]->curQueryTime > QUERY_FREQ)
 		{
-			for(int i = 0; i < buffer->num; i++)
+			query_area(tree,objs->buff[i]->base->position,RAY_AREA,buffer);
+			//SEPARATION
+			updates++;
+			//ALINGMENT
+			vec3 alingvel = {0};
+			if(buffer->num > 1) // not myself
 			{
-				if(objs->buff[i] != buffer->buff[i])
-				add_vec3(&alingvel,&alingvel,&buffer->buff[i]->velocity);
+				for(int i = 0; i < buffer->num; i++)
+				{
+					if(objs->buff[i] != buffer->buff[i])
+					add_vec3(&alingvel,&alingvel,&buffer->buff[i]->velocity);
+				}
+				alingvel.x /= buffer->num;
+				alingvel.y /= buffer->num;
+				alingvel.z /= buffer->num;
+				normalize_vec3(&alingvel);
+				scale_vec3(&alingvel,&alingvel,MAX_SPEED);
+				sub_vec3(&alingvel,&alingvel,&objs->buff[i]->velocity);
+				reduce_vec3_inplace(&alingvel,MAX_FORCE);
 			}
-			alingvel.x /= buffer->num;
-			alingvel.y /= buffer->num;
-			alingvel.z /= buffer->num;
-			normalize_vec3(&alingvel);
-			scale_vec3(&alingvel,&alingvel,MAX_SPEED);
-			sub_vec3(&alingvel,&alingvel,&objs->buff[i]->velocity);
-			reduce_vec3_inplace(&alingvel,MAX_FORCE);
+			//COHEESIO
+			// vec3 cohesionvel = {0};
+			// if(buffer->num > 1)
+			// {
+			// 	for(int i = 0; i < buffer->num; i++)
+			// 	{
+			// 		if(objs->buff[i] != buffer->buff[i])
+			// 		add_vec3(&cohesionvel,&cohesionvel,&buffer->buff[i]->base->position);
+			// 	}
+			// 	cohesionvel.x /= buffer->num;
+			// 	cohesionvel.y /= buffer->num;
+			// 	cohesionvel.z /= buffer->num;
+			// 	normalize_vec3(&alingvel);
+			// 	scale_vec3(&alingvel,&alingvel,MAX_SPEED);
+			// 	sub_vec3(&alingvel,&alingvel,&objs->buff[i]->velocity);
+			// 	reduce_vec3_inplace(&alingvel,MAX_FORCE);
+			//}
+
+
+
+
+
+			add_vec3(&objs->buff[i]->acceleration,&objs->buff[i]->acceleration,&alingvel);
+			objs->buff[i]->curQueryTime = 0;
 		}
-		//COHEESIO
-		// vec3 cohesionvel = {0};
-		// if(buffer->num > 1)
-		// {
-		// 	for(int i = 0; i < buffer->num; i++)
-		// 	{
-		// 		if(objs->buff[i] != buffer->buff[i])
-		// 		add_vec3(&cohesionvel,&cohesionvel,&buffer->buff[i]->base->position);
-		// 	}
-		// 	cohesionvel.x /= buffer->num;
-		// 	cohesionvel.y /= buffer->num;
-		// 	cohesionvel.z /= buffer->num;
-		// 	normalize_vec3(&alingvel);
-		// 	scale_vec3(&alingvel,&alingvel,MAX_SPEED);
-		// 	sub_vec3(&alingvel,&alingvel,&objs->buff[i]->velocity);
-		// 	reduce_vec3_inplace(&alingvel,MAX_FORCE);
-		//}
-
-
-
-
-
-		add_vec3(&objs->buff[i]->acceleration,&objs->buff[i]->acceleration,&alingvel);
 		objs->buff[i]->velocity.x += objs->buff[i]->acceleration.x * dt;
 		objs->buff[i]->velocity.y += objs->buff[i]->acceleration.y * dt;
 		objs->buff[i]->velocity.z += objs->buff[i]->acceleration.z * dt;
@@ -410,12 +403,8 @@ void update_objects(ObjectBuffer* objs,float dt,ObjectBuffer* buffer,AABBtree* t
 		objs->buff[i]->acceleration.y = 0;
 		objs->buff[i]->acceleration.z = 0;
 		buffer->num = 0;
-		update = 0;
-	}	
-	}
-	else
-	{
-		update = 1;
-	}
-	
+		}	
+
+		//printf("NUM UPDATES %d\n",updates);
+
 }

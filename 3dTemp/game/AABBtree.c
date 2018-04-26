@@ -53,7 +53,8 @@ static inline void init_tree(AABBtree* tree)
 }
 
 #define ARRAY_INDEX(ARRAY,OBJ)(OBJ - ARRAY)
-#define FATTEN 0.f
+#define FATTEN 0.5f
+#define VEL_MULT 20.f
 static inline uint create_new_leaf(AABBtree* tree,const Object* obj) // todo -> FATTEN IT UP BOIIII
 {	
 	if(tree->freelist.num == 0)
@@ -62,11 +63,18 @@ static inline uint create_new_leaf(AABBtree* tree,const Object* obj) // todo -> 
 		GET_NEW_OBJ(tree->NodeArrayallocator,n);
 		n->type = Leaf;
 		n->object = obj;
-		n->p = obj->base->position;
+		n->p.x = obj->base->position.x + obj->velocity.x;
+		n->p.y = obj->base->position.y + obj->velocity.y;
+		n->p.z = obj->base->position.z + obj->velocity.z;
+
+		float fattenx = (obj->velocity.x * VEL_MULT) / 2.f;
+		float fatteny = (obj->velocity.y * VEL_MULT) / 2.f;
+		float fattenz = (obj->velocity.z * VEL_MULT) / 2.f;
+
 		n->w = obj->dims;
-		n->w.x += FATTEN;
-		n->w.y += FATTEN;
-		n->w.z += FATTEN;
+		n->w.x += abs(fattenx);
+		n->w.y += abs(fatteny);
+		n->w.z += abs(fattenz);
 		return	ARRAY_INDEX(tree->allocator,n);
 	}
 	else
@@ -78,11 +86,18 @@ static inline uint create_new_leaf(AABBtree* tree,const Object* obj) // todo -> 
 
 		ret->type = Leaf;
 		ret->object = obj;
-		ret->p = obj->base->position;		
-		ret->w = obj->dims;			
-		ret->w.x += FATTEN;
-		ret->w.y += FATTEN;
-		ret->w.z += FATTEN;
+		ret->p.x = obj->base->position.x + obj->velocity.x;
+		ret->p.y = obj->base->position.y + obj->velocity.y;
+		ret->p.z = obj->base->position.z + obj->velocity.z;
+
+		float fattenx = (obj->velocity.x * VEL_MULT) / 2.f;
+		float fatteny = (obj->velocity.y * VEL_MULT) / 2.f;
+		float fattenz = (obj->velocity.z * VEL_MULT) / 2.f;
+
+		ret->w = obj->dims;
+		ret->w.x += abs(fattenx);
+		ret->w.y += abs(fatteny);
+		ret->w.z += abs(fattenz);
 		return	ARRAY_INDEX(tree->allocator,ret);
 		
 	}
@@ -536,14 +551,19 @@ static uint inline update_object_in_tree(AABBtree* tree,uint node)
 
 	if(reinsert)
 	{
-		//printf("REINSERTING\n");
+		printf("REINSERTING\n");
 		remove_node(tree,node);
 		node = insert_to_tree(tree,ob);
+	}
+	else
+	{
+		printf("NOT INSERTINGREE\n");
 	}
 	return node;
 }
 
-#define DEBUG_TREE
+
+//#define DEBUG_TREE
 #ifdef DEBUG_TREE
 int numchecks[NUM_OBJS] = {0};
 int index = 0;
@@ -636,10 +656,16 @@ static void inline query_area(AABBtree* tree, vec3 pos, float r,ObjectBuffer* bu
 
 }
 
+void draw_index(AABBtree* tree,DebugRend* rend,uint index)
+{
+
+	struct Node* current = &tree->allocator[index];
+	draw_box(rend,current->p,current->w);
+}
+
 static void draw_tree(AABBtree* tree,DebugRend* rend)
 {
 	
-
 	PUSH_NEW_OBJ(tree->nodeStack, &tree->allocator[tree->rootIndex]);
 	struct Node* current = NULL;
 	while(tree->nodeStack.num)
