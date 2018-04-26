@@ -38,7 +38,7 @@ typedef struct
 
 #define allocator NodeArrayallocator.buff
 
-#define DEFAULT_ALLOCATORSIZE 100
+//#define DEFAULT_ALLOCATORSIZE 100
 #define allocHandle 
 
 static inline void init_tree(AABBtree* tree)
@@ -53,7 +53,7 @@ static inline void init_tree(AABBtree* tree)
 }
 
 #define ARRAY_INDEX(ARRAY,OBJ)(OBJ - ARRAY)
-#define FATTEN 0.5f
+#define FATTEN 0.f
 static inline uint create_new_leaf(AABBtree* tree,const Object* obj) // todo -> FATTEN IT UP BOIIII
 {	
 	if(tree->freelist.num == 0)
@@ -117,6 +117,7 @@ static inline uint create_new_branch(AABBtree* tree)
 }
 static inline ubyte AABB(const vec3 pos1,const vec3 dim1, const vec3 pos2, const vec3 dim2)
 {
+	ubyte ret = 0;
 	float X = abs(pos1.x - pos2.x);
 	float Y = abs(pos1.y - pos2.y);
 	float Z = abs(pos1.z - pos2.z);
@@ -347,7 +348,7 @@ static inline ubyte refit_parent(AABBtree* tree,struct Node* parent)
 static inline uint insert_to_tree(AABBtree* tree,const Object* obj)
 {
 	tree->numObjs++;
-	printf("NUM OBJECTS%d\n",tree->numObjs);
+//	printf("NUM OBJECTS%d\n",tree->numObjs);
 	if(tree->NodeArrayallocator.num == 0)
 	{
 		uint tempInd = create_new_leaf(tree, obj);
@@ -506,7 +507,7 @@ static inline void remove_node(AABBtree* tree, uint node)
 static uint inline update_object_in_tree(AABBtree* tree,uint node)
 {
 	
-	printf("type = %d\n", tree->allocator[node].type );
+	//printf("type = %d\n", tree->allocator[node].type );
 	assert(tree->allocator[node].type == Leaf);
 	Object* ob = tree->allocator[node].object;
 
@@ -535,17 +536,53 @@ static uint inline update_object_in_tree(AABBtree* tree,uint node)
 
 	if(reinsert)
 	{
-		printf("REINSERTING\n");
+		//printf("REINSERTING\n");
 		remove_node(tree,node);
 		node = insert_to_tree(tree,ob);
 	}
 	return node;
 }
 
-int lastRound = 0;
+#define DEBUG_TREE
+#ifdef DEBUG_TREE
+int numchecks[NUM_OBJS] = {0};
+int index = 0;
+float currentTime = 0;
+const float dt = 1.f / 60.f;
+
+int averageChecks[10] = {0};
+int averageIndex = 0;
+#endif
 static void inline query_area(AABBtree* tree, vec3 pos, float r,ObjectBuffer* buffer)
 {
-	r *= r;
+#ifdef DEBUG_TREE
+	if(index >= NUM_OBJS)
+	{
+		
+		float add = 0;
+	 	for(int i = 0; i < NUM_OBJS;i++)
+	 		add += (float)numchecks[i];
+
+		add /= (float)NUM_OBJS;
+		if(averageIndex >= 10)
+			averageIndex = 0;
+		averageChecks[averageIndex++] = (int)add;
+		index = 0;
+
+		currentTime += dt;
+		if(currentTime > 1.f)
+		{
+			float add = 0;
+			for(int i = 0; i < 10;i++)
+				add += averageChecks[i];
+
+			add /= 10.f;
+			printf("AVERAGE CHECK IN TREE IS %.2f\n",add);
+			currentTime = 0;
+		}
+	}
+#endif
+	int checks = 0;
 	PUSH_NEW_OBJ(tree->nodeStack, &tree->allocator[tree->rootIndex]);
 	struct Node* current = NULL;
 	vec3 dims = {r,r,r};
@@ -556,12 +593,12 @@ static void inline query_area(AABBtree* tree, vec3 pos, float r,ObjectBuffer* bu
 
 		if(AABB(current->p,current->w, pos,dims))
 		{
+			checks++;
 			if(current->type == Leaf)
 			{
 				//printf("VISITED\n");
 				assert(current->object->base->modelId == Planet1);
 				PUSH_NEW_OBJ(tree->objectbuffer, current->object);
-				lastRound = tree->numObjs;
 			}
 			else
 			{	
@@ -571,8 +608,14 @@ static void inline query_area(AABBtree* tree, vec3 pos, float r,ObjectBuffer* bu
 		}
 
 	}	
+#ifdef DEBUG_TREE//printf("%d\n", checks);
+	numchecks[index++] = checks;//tree->objectbuffer.num;
+#endif
+
+
 	tree->nodeStack.num = 0;
 
+	r *= r;
 	assert(tree->objectbuffer.num <= tree->numObjs);
 	for(int i = 0; i < tree->objectbuffer.num; i++)
 	{

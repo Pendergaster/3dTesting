@@ -48,12 +48,12 @@ typedef struct
 	vec3		velocity;
 	vec3		acceleration;
 } Object;
-
 static const Object DEFAULT_OBJECT = {0};
 
 CREATEDYNAMICARRAY(Object*,ObjectBuffer);
 CREATEDYNAMICARRAY(renderData*,renderDataBuffer);
 
+#define NUM_OBJS 2000
 #include "AABBtree.c"
 
 typedef struct
@@ -171,7 +171,6 @@ unsigned int rand_interval(unsigned int min, unsigned int max)
 }
 
 
-#define NUM_OBJS 200
 #define MAX_FLOCK_VEL 0.3f
 
 EXPORT void init_game(void* p)
@@ -202,9 +201,9 @@ EXPORT void init_game(void* p)
 		renderData* planet = nob->base;
 		planet->material.diffuse = MoonTexture;
 		planet->modelId = Planet1;
-		planet->position.x = (float)rand_interval(0,120) - 60.f;
-		planet->position.y = (float)rand_interval(0,120) - 60.f;
-		planet->position.z = (float)rand_interval(0,120) - 60.f;	
+		planet->position.x = (float)rand_interval(0,400) - 200.f;
+		planet->position.y = (float)rand_interval(0,400) - 200.f;
+		planet->position.z = (float)rand_interval(0,400) - 200.f;	
 
 		nob->velocity.x = ((float)rand_interval(0,30) - 15.f) * 0.1f;
 		nob->velocity.y = ((float)rand_interval(0,30) - 15.f) * 0.1f;
@@ -296,21 +295,21 @@ EXPORT void update_game(void* p)
 	update_objects(&game->objects,eng->DT,&game->raybuffer,&game->tree);
 	
 
-	ObjectBuffer temp;
-	INITARRAY(temp);
+	// ObjectBuffer temp;
+	// INITARRAY(temp);
 
 	static float pp = 0.f;
 	pp += 0.02f;
 	vec3 potemp = {pp,pp,pp};
-	if(game->objects.num > 2)
-	query_area(&game->tree,potemp,10,&temp);
-	for(int i = 0; i < temp.num; i++)
-	{
-		draw_box(&eng->drend,temp.buff[i]->base->position,temp.buff[i]->dims);
-	}
-	vec3 di = {10,10,10};
-	draw_box(&eng->drend,potemp,di);
-	DISPOSE_ARRAY(temp);
+	//if(game->objects.num > 2)
+	// query_area(&game->tree,potemp,10,&temp);
+	// for(int i = 0; i < temp.num; i++)
+	// {
+	// 	draw_box(&eng->drend,temp.buff[i]->base->position,temp.buff[i]->dims);
+	// }
+//	vec3 di = {5,5,5};
+	//draw_box(&eng->drend,potemp,di);
+	//DISPOSE_ARRAY(temp);
 //	if(game->objects.num)
 	//draw_tree(&game->tree,&eng->drend);
 
@@ -340,12 +339,17 @@ EXPORT void dispose_game(void* p)
 #define SEPARATION_MULTPLIER 1.5f
 #define ALINGMENT_MULTPLIER 1.f
 #define COHESION_MULTPLIER 1.f
-#define RAY_AREA 20.f
+#define RAY_AREA 5.f
 #define MAX_FORCE 0.1f
 #define MAX_SPEED 4.f
 
+
+uint update = 1;
 void update_objects(ObjectBuffer* objs,float dt,ObjectBuffer* buffer,AABBtree* tree)
 {
+	if (update)
+	{
+
 	for(int i = 0;i < objs->num; i++)
 	{
 		query_area(tree,objs->buff[i]->base->position,RAY_AREA,buffer);
@@ -399,10 +403,19 @@ void update_objects(ObjectBuffer* objs,float dt,ObjectBuffer* buffer,AABBtree* t
 		objs->buff[i]->base->position.y += objs->buff[i]->velocity.y * dt;
 		objs->buff[i]->base->position.z += objs->buff[i]->velocity.z * dt;
 
+
+		objs->buff[i]->treeIndex = update_object_in_tree(tree,objs->buff[i]->treeIndex);
+
 		objs->buff[i]->acceleration.x = 0;
 		objs->buff[i]->acceleration.y = 0;
 		objs->buff[i]->acceleration.z = 0;
 		buffer->num = 0;
+		update = 0;
 	}	
+	}
+	else
+	{
+		update = 1;
+	}
 	
 }
