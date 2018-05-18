@@ -1,9 +1,8 @@
-
-
+//#include <ycm_helper.h>
 typedef struct
 {
 
-	uint	progId;
+	uint		progId;
 	int		numAttribs;
 } ShaderHandle;
 
@@ -14,7 +13,10 @@ enum
 	LIGHT,
 	DEBUG_PROG,
 	skyboxShader,
+	frameShader,
+	BlurShader,
 	maxshaderprogs
+
 };
 
 static ShaderHandle shader_cache[maxshaderprogs] = { 0 }; // model uv, model no uv
@@ -26,19 +28,19 @@ ShaderHandle* get_shader(int shader)
 
 uint compile_shader(uint glenum, const char* source)
 {
-	uint compilecheck = 0;
-	uint shader = glCreateShader(glenum);
+	int compilecheck = 0;
+	int shader = glCreateShader(glenum);
 	if (shader == 0) FATALERROR;
 
 	glShaderSource(shader, 1, &source, NULL);
 	glCompileShader(shader);
 
-	glGetShaderiv(shader, GL_COMPILE_STATUS, &compilecheck);
+	glGetShaderiv(shader, GL_COMPILE_STATUS, &(compilecheck));
 
 	if (!compilecheck)
 	{
-		uint infolen = 0;
-		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infolen);
+		int infolen = 0;
+		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &(infolen));
 		if (infolen > 1)
 		{
 			char* infoLog = malloc(sizeof(char) * infolen);
@@ -46,7 +48,7 @@ uint compile_shader(uint glenum, const char* source)
 			printf("Error compiling shader :\n%s\n", infoLog);
 			free(infoLog);
 		}
-		glDeleteShader(shader);
+		glDeleteShader((GLuint)shader);
 		FATALERROR;
 	}
 	return shader;
@@ -54,7 +56,7 @@ uint compile_shader(uint glenum, const char* source)
 #define INVALIDSHADER 666
 uint soft_compile_shader(uint glenum, const char* source)
 {
-	uint compilecheck = 0;
+	int compilecheck = 0;
 	uint shader = glCreateShader(glenum);
 	if (shader == 0) return INVALIDSHADER;
 
@@ -65,7 +67,7 @@ uint soft_compile_shader(uint glenum, const char* source)
 
 	if (!compilecheck)
 	{
-		uint infolen = 0;
+		int infolen = 0;
 		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infolen);
 		if (infolen > 1)
 		{
@@ -73,7 +75,8 @@ uint soft_compile_shader(uint glenum, const char* source)
 			glGetShaderInfoLog(shader, infolen, NULL, infoLog);
 			printf("Error compiling shader :\n%s\n", infoLog);
 			free(infoLog);
-		}(shader);
+		}
+		glDeleteShader(shader);
 		return INVALIDSHADER;
 	}
 	return shader;
@@ -89,9 +92,9 @@ void dispose_shader(ShaderHandle* sha)
 void unuse_shader(const ShaderHandle* sha)
 {
 	glUseProgram(0);
-	for (int i = 0; i < sha->numAttribs; i++) {
-		glDisableVertexAttribArray(i);
-	}
+//	for (int i = 0; i < sha->numAttribs; i++) {
+//		glDisableVertexAttribArray(i);
+//	}
 }
 void add_attribute(ShaderHandle* shader, const char* name)
 {
@@ -152,9 +155,9 @@ uint get_uniform_location(ShaderHandle* shader, const char* name)
 void use_shader(const ShaderHandle* shader)
 {
 	glUseProgram(shader->progId);
-	for (int i = 0; i < shader->numAttribs; i++) {
-		glEnableVertexAttribArray(i);
-	}
+	//for (int i = 0; i < shader->numAttribs; i++) {
+//		glEnableVertexAttribArray(i);
+//	}
 }
 
 void link_shader(ShaderHandle* shader, uint vert, uint frag)
@@ -162,12 +165,12 @@ void link_shader(ShaderHandle* shader, uint vert, uint frag)
 	printf("Linking program %d\n", shader->progId);
 	//shader->progId = glCreateProgram();
 	glLinkProgram(shader->progId);
-	uint linked = 0;
+	int linked = 0;
 	glGetProgramiv(shader->progId, GL_LINK_STATUS, &linked);
 
 	if (!linked)
 	{
-		uint infolen = 0;
+		int infolen = 0;
 		glGetProgramiv(shader->progId, GL_INFO_LOG_LENGTH, &infolen);
 		if (infolen > 1)
 		{
@@ -188,12 +191,12 @@ uint soft_link_shader(ShaderHandle* shader, uint vert, uint frag)
 	printf("Linking program %d\n", shader->progId);
 	//shader->progId = glCreateProgram();
 	glLinkProgram(shader->progId);
-	uint linked = 0;
+	int linked = 0;
 	glGetProgramiv(shader->progId, GL_LINK_STATUS, &linked);
 
 	if (!linked)
 	{
-		uint infolen = 0;
+		int infolen = 0;
 		glGetProgramiv(shader->progId, GL_INFO_LOG_LENGTH, &infolen);
 		if (infolen > 1)
 		{

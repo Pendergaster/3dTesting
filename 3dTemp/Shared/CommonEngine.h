@@ -1,14 +1,17 @@
 
 #define PNG_FILES(FILE) \
 		FILE(MoonTexture)\
+		FILE(SpaceshipTexture)\
 		//FILE(linux_pingu)\
 
 
 #define JPG_FILES(FILE) \
-		//FILE(laatikko)	\
+		FILE(PalloTexture)	\
 		
 #define MODEL_FILES(FILE) \
 		FILE(Planet1)		\
+		FILE(SpaceShip)		\
+		FILE(PatePallo)		\
 
 #define TGA_FILES(FILE) \
 		FILE(starfield_lf)\
@@ -18,7 +21,6 @@
 		FILE(starfield_ft)\
 		FILE(starfield_bk)\
 	
-
 #define GENERATE_ENUM(ENUM) ENUM,
 
 
@@ -78,8 +80,8 @@ enum EngineKeys
 	KEY_MAX = 1 << 30,
 	//max_keys
 };
-#define SCREENWIDHT 1200
-#define SCREENHEIGHT 800
+#define SCREENWIDHT 1400
+#define SCREENHEIGHT 900
 typedef struct
 {
 	uint32_t	keys;
@@ -116,7 +118,7 @@ static inline void set_engine_key(EngineInputs* in,uint key)
         BIT_SET(in->keys, (1 << (realKey - 1)));
     }
 }
-static inline release_engine_key(EngineInputs* in,uint key)
+static inline void release_engine_key(EngineInputs* in,uint key)
 {
 	int realKey = key - GLFW_KEY_A + 1;
 	if (BETWEEN(0, realKey, 30))
@@ -129,7 +131,7 @@ static inline void update_engine_keys(EngineInputs* in)
 	in->lastKeys = in->keys;
 	in->lastMousepos = in->mousePos;
 }
-static inline set_engine_mouse(EngineInputs* in,double x,double y)
+static inline void set_engine_mouse(EngineInputs* in,double x,double y)
 {
 	in->mousePos.x = (float)x;
 	in->mousePos.y = (float)y;
@@ -240,7 +242,7 @@ typedef struct
 
 typedef struct
 {
-	int			modelId;
+	int		modelId;
 	vec3		Rotation;
 	vec3		position;
 	Material	material;

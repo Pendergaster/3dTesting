@@ -113,10 +113,10 @@ void render_nuklear()
 #endif // RENDEFRGUI
 }
 
-ubyte show_engine_stats(struct nk_context *ctx,float fps,float frametime)
+ubyte show_engine_stats(struct nk_context *ctx,float fps,float frametime, vec3 cameraDir,float yaw,float pitch,vec3 camPos)
 {
 	ubyte ret = 0;
-	if (nk_begin(ctx, "Engine", nk_rect(10, 10, 200, 400), NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_SCALABLE | NK_WINDOW_MINIMIZABLE | NK_WINDOW_TITLE))
+	if (nk_begin(ctx, "Engine", nk_rect(10, 10, 300, 400), NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_SCALABLE | NK_WINDOW_MINIMIZABLE | NK_WINDOW_TITLE))
 	{
 		char str[100];
 		nk_layout_row_dynamic(ctx, 20, 1);
@@ -124,6 +124,12 @@ ubyte show_engine_stats(struct nk_context *ctx,float fps,float frametime)
 		nk_label(ctx, str, NK_TEXT_LEFT);
 		sprintf(str, "frametime     %.2f", frametime);
 		nk_label(ctx, str, NK_TEXT_LEFT);
+		sprintf(str,"camera dir %.3f , %.3f , %.3f", cameraDir.x,cameraDir.y,cameraDir.z);
+		nk_label(ctx,str,NK_TEXT_LEFT);
+		sprintf(str,"yaw  %.3f , pitch %.3f", yaw,pitch);
+		nk_label(ctx,str,NK_TEXT_LEFT);
+		sprintf(str,"camera pos %.3f , %.3f , %.3f", camPos.x,camPos.y,camPos.z);
+		nk_label(ctx,str,NK_TEXT_LEFT);
  		if (nk_button_label(ctx, "button")) 
 		{
 			ret = 1;			

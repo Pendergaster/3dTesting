@@ -173,7 +173,7 @@ inline void render_models(const Renderer *rend,const renderData* data,const uint
 	set_uniform_float(withTex, "light.quadratic", light.quadratic);
 
 	vec3 dir = { -0.2f, -1.0f, -0.3f };
-	vec3 ambient = { 0.05f, 0.05f, 0.05f };
+	vec3 ambient = { 0.5f, 0.5f, 0.5f };
 	vec3 diff = { 0.4f, 0.4f, 0.4f };
 	vec3 spec = { 0.5f, 0.5f, 0.5f };
 	set_vec3(withTex, "glight.direction", &dir);
@@ -196,9 +196,9 @@ inline void render_models(const Renderer *rend,const renderData* data,const uint
 		mat4 model = { 0 };
 		identity(&model);
 		translate_mat4(&model, &model, data[i].position);
-		rotate_mat4_Z(&model, deg_to_rad(data[i].Rotation.z));
-		rotate_mat4_Y(&model, deg_to_rad(data[i].Rotation.y));
-		rotate_mat4_X(&model, deg_to_rad(data[i].Rotation.x));
+		rotate_mat4_Z(&model, data[i].Rotation.z/*deg_to_rad(data[i].Rotation.z)*/);
+		rotate_mat4_Y(&model, data[i].Rotation.y/*deg_to_rad(data[i].Rotation.y)*/);
+		rotate_mat4_X(&model, data[i].Rotation.x/*deg_to_rad(data[i].Rotation.x)*/);
 		scale_mat4(&model, data[i].scale);
 
 		glCheckError();

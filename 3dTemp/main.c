@@ -1,7 +1,8 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include <stdlib.h>
 #include <stdio.h>
 #include <conio.h>
-#include <glad\glad.h>
+#include <glad/glad.h>
 #include <glfw3.h>
 #include <assert.h>
 #define MATH_IMPLEMENTATION
@@ -24,7 +25,7 @@ FILETIME Win32GetLastWriteTime(const char* path)
 
 	return time;
 }
-static int MEMTRACK = 0;
+int MEMTRACK = 0;
 
 inline void* DEBUG_MALLOC(int size)
 {
@@ -65,6 +66,10 @@ typedef struct
 		FILE(debug_frag)\
 		FILE(skybox_vert)\
 		FILE(skybox_frag)\
+		FILE(frame_vert)\
+		FILE(frame_frag)\
+		FILE(blur_vert)\
+		FILE(blur_frag)\
 
 
 #define TXT_FILES(FILE) \
@@ -78,7 +83,7 @@ typedef struct
 
 #define GENERATE_SHADER_STRING(STRING) "shaders/"#STRING".txt",
 
-static const char* txt_file_names[] = {
+const char* txt_file_names[] = {
 	TXT_FILES(GENERATE_STRING)
 	SHADER_FILES(GENERATE_SHADER_STRING)
 };
@@ -137,6 +142,11 @@ static Engine* engptr;
 //	in.mousepos.x = x;
 //	in.mousepos.y = y;
 //}
+//
+//
+
+
+
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
 	if (action == GLFW_PRESS)
@@ -200,12 +210,12 @@ void loadTexture(const int file)
 	}
 	if (tex->channels == 3)
 	{
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tex->widht, tex->height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB, tex->widht, tex->height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
 		glGenerateMipmap(GL_TEXTURE_2D);
 	}
 	else if (tex->channels == 4)
 	{
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex->widht, tex->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB_ALPHA, tex->widht, tex->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 		glGenerateMipmap(GL_TEXTURE_2D);
 	}
 	else
@@ -225,13 +235,39 @@ char* load_file(int file,int* size)
 	return source;
 }
 
+GLenum glCheckError_(const char *file, int line)
+{
+	GLenum errorCode;
+	while ((errorCode = glGetError()) != GL_NO_ERROR)
+	{
+		char* error = NULL;
+		switch (errorCode)
+		{
+		case GL_INVALID_ENUM:                  error = "INVALID_ENUM"; break;
+		case GL_INVALID_VALUE:                 error = "INVALID_VALUE"; break;
+		case GL_INVALID_OPERATION:             error = "INVALID_OPERATION"; break;
+			//case GL_STACK_OVERFLOW:                error = "STACK_OVERFLOW"; break;
+			//case GL_STACK_UNDERFLOW:               error = "STACK_UNDERFLOW"; break;
+		case GL_OUT_OF_MEMORY:                 error = "OUT_OF_MEMORY"; break;
+		case GL_INVALID_FRAMEBUFFER_OPERATION: error = "INVALID_FRAMEBUFFER_OPERATION"; break;
+		}
+		//FATALERRORMESSAGE("GL ERROR %s \n", error);	
+		printf("GL ERROR %s, LINE %d , FILE %s \n", error, line, file);
+ 		FATALERROR;
+	}
+	return errorCode;
+}
+#define glCheckError() glCheckError_(__FILE__, __LINE__)
+
+
 uint load_skybox(uint* skyvao,uint* skyvbo)
 {
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-  	Texture tex ={0};
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    Texture tex ={0};
     glGenTextures(1, &tex.ID);
     glBindTexture(GL_TEXTURE_CUBE_MAP, tex.ID);
 	//stbi_set_flip_vertically_on_load(1);
+    glCheckError();
     int width, height, nrChannels;
     for (unsigned int i = 0; i < 6; i++)
     {
@@ -250,6 +286,7 @@ uint load_skybox(uint* skyvao,uint* skyvbo)
         }
     }
 
+    glCheckError();
 	//stbi_set_flip_vertically_on_load(0);
 
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -258,6 +295,7 @@ uint load_skybox(uint* skyvao,uint* skyvbo)
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
+    glCheckError();
 	float skyboxVertices[] = {
     -1.0f,  1.0f, -1.0f,
     -1.0f, -1.0f, -1.0f,
@@ -325,13 +363,16 @@ uint load_skybox(uint* skyvao,uint* skyvbo)
 
 	link_shader(sha, vertID, fragID);
 	
+    	glCheckError();
 	use_shader(sha);
 	unuse_shader(sha);
+	glCheckError();
 	
 	uint vao = 0;
 	uint vbo = 0;
 	glGenVertexArrays(1,&vao);
 	glGenBuffers(1,&vbo);
+	
 	
 	assert(vao != 0 && vbo != 0);
 
@@ -398,30 +439,6 @@ char* load_file_from_source(const char* file, int* size)
 }
 
 
-GLenum glCheckError_(const char *file, int line)
-{
-	GLenum errorCode;
-	while ((errorCode = glGetError()) != GL_NO_ERROR)
-	{
-		unsigned char* error = NULL;
-		switch (errorCode)
-		{
-		case GL_INVALID_ENUM:                  error = "INVALID_ENUM"; break;
-		case GL_INVALID_VALUE:                 error = "INVALID_VALUE"; break;
-		case GL_INVALID_OPERATION:             error = "INVALID_OPERATION"; break;
-			//case GL_STACK_OVERFLOW:                error = "STACK_OVERFLOW"; break;
-			//case GL_STACK_UNDERFLOW:               error = "STACK_UNDERFLOW"; break;
-		case GL_OUT_OF_MEMORY:                 error = "OUT_OF_MEMORY"; break;
-		case GL_INVALID_FRAMEBUFFER_OPERATION: error = "INVALID_FRAMEBUFFER_OPERATION"; break;
-		}
-		//FATALERRORMESSAGE("GL ERROR %s \n", error);	
-		printf("GL ERROR %s \n", error);
-		FATALERROR;
-	}
-	return errorCode;
-}
-#define glCheckError() glCheckError_(__FILE__, __LINE__)
-
 #include "source\objload.c"
 typedef struct
 {
@@ -481,8 +498,18 @@ static void error_callback(int e, const char *d)
 #include "source/debugrendering.c"
 
 //CREATEDYNAMICARRAY(int, foo)
-//CREATEDYNAMICARRAY(vec2, vert_buffer)
+//CREATEDYNAMICARRAY(vec2, vert_bufferj
 //CREATEDYNAMICARRAY(int, index_buffer)
+float quadVertices[] = {  
+    // positions   // texCoords
+    -1.0f,  1.0f,  0.0f, 1.0f,
+    -1.0f, -1.0f,  0.0f, 0.0f,
+     1.0f, -1.0f,  1.0f, 0.0f,
+
+    -1.0f,  1.0f,  0.0f, 1.0f,
+     1.0f, -1.0f,  1.0f, 0.0f,
+     1.0f,  1.0f,  1.0f, 1.0f
+};	
 int main()
 {
 	//assert(0);	
@@ -499,6 +526,8 @@ int main()
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3),
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_SAMPLES, 4);
+	
 	GLFWwindow* window = glfwCreateWindow(SCREENWIDHT,SCREENHEIGHT, "Tabula Rasa", NULL, NULL);
 	if (window == NULL)
 	{
@@ -523,6 +552,7 @@ int main()
 	
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	//init_engine(&engine);
+	glCheckError();
 	struct nk_context *ctx;
 	struct nk_colorf bg;
 
@@ -535,15 +565,6 @@ int main()
 
 #define reee
 
-	
-
-
-	//mat4 model = { 0 };
-	//identity(&model);
-	//vec3 axis = { 1.f,0.f,0.f };
-	//vec3 cubePos = { 3.f, 2.f , 0.f };
-	//translate_mat4(&model, &model, cubePos);
-	//rotate_mat4(&model, &model, axis, deg_to_rad(-55.f));
 
 	mat4 view = { 0 };
 	identity(&view);
@@ -556,10 +577,15 @@ int main()
 	glCheckError();
 
 	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_MULTISAMPLE);  
+	glEnable(GL_CULL_FACE);  
+//glCullFace(GL_FRONT); 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	
 	Renderer rend = { 0 };
+	glCheckError(); 
 	init_renderer(&rend);
+	glCheckError();
 	const double dt = 1.0 / 60.0;
 	engine.DT = dt;
 	double currentTime = glfwGetTime();
@@ -576,9 +602,10 @@ int main()
 	float updating = 0.f;
 	//load_model(Planet1);
 
+	glCheckError();
 	//DebugRend debugRned = { 0 };
 	init_debugrend(&engine.drend);
-
+	glCheckError();
 	mat4 lampRotater = { 0 };
 	vec3 lampAxis = { 1.f, 0.f, 0.f};
 	create_rotate_mat4(&lampRotater, lampAxis, deg_to_rad(2.f));
@@ -587,7 +614,7 @@ int main()
 	//vec3 lightcolor = { sinf(0.2f* glfwGetTime()),sinf( 0.7f* glfwGetTime()), sinf(1.3f * glfwGetTime()) };
 	vec3 diffL = { 0.8f, 0.8f, 0.8f };
 	//scale_vec3(&diffL, &diffL, 0.5f);
-	vec3 ambL = { 0.05f, 0.05f, 0.05f };
+	vec3 ambL = { 0.5f, 0.5f, 0.5f };
 	//scale_vec3(&ambL, &ambL, 0.2f);
 	vec3 specL = { 1.0f, 1.0f, 1.0f };
 	vec3 oldLightPos = {2.f , 2.f , 2.f};
@@ -599,13 +626,12 @@ int main()
 	pro.constant = 1.f;
 	pro.linear = 0.001f;
 	pro.quadratic = 0.002f;
-	
-	//printf("kokok %f", planet->material.specular.x);
+
+	printf("LOADING GAME");
 	func_ptr init_game = NULL;
 	func_ptr update_game = NULL;
 	func_ptr dispose_game = NULL;
 	DLLHandle game_dll = {0};
-//C:\Users\Pate\Documents\3dTesting\3dTesting\vsproject\3dTesting\game\Project1\x64\Debug
 	load_DLL(&game_dll, "DebugBin/game.dll");
 	init_game = load_DLL_function(game_dll, "init_game");
 	update_game = load_DLL_function(game_dll, "update_game");
@@ -614,10 +640,8 @@ int main()
 	{
 		loadTexture(i);
 	}
-	//for(int i = 0 ;i < maxskyboxfiles; i++)
-	//{
-		//loadTexture(engine.skyBoxCache,i,GL_TEXTURE_CUBE_MAP,GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,GL_CLAMP_TO_EDGE,skybox_names);
-	//}
+	glCheckError();
+
 	engine.skyBoxID = load_skybox(&engine.skyBoxvao,&engine.skyBoxvbo);
 	glCheckError();
 	for (int i = 0; i < maxmodelfiles; i++)
@@ -625,6 +649,208 @@ int main()
 		load_model(i);
 	}
 	init_game(&engine);
+
+	uint FrameBuffer = 0;
+	glGenFramebuffers(1,&FrameBuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER,FrameBuffer);
+
+    uint FrameTextures[2] = {0u,0u}; // first is scene and second is bright channel
+    glGenTextures(2, FrameTextures);
+			glCheckError();
+	for(int i = 0; i < 2; i++)
+	{
+			glBindTexture(GL_TEXTURE_2D, FrameTextures[i]);
+		  
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCREENWIDHT, SCREENHEIGHT, 0, GL_RGBA, GL_FLOAT, NULL); 
+			// gl_float for HDR, gl unsigned bute with out
+
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
+		    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, FrameTextures[i], 0);  // attach it to framebuffer
+
+	}
+	
+    
+
+	unsigned int RenderBuffer;
+    glGenRenderbuffers(1, &RenderBuffer);
+	glBindRenderbuffer(GL_RENDERBUFFER, RenderBuffer);  // bind buffer
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCREENWIDHT, SCREENHEIGHT); // create depth and stencil buffer
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, RenderBuffer);// attach it!  
+    glCheckError();
+	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	{
+		printf("Frame buffers arent baked! \n");
+		assert(0);
+	}
+		unsigned int attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+    glDrawBuffers(2, attachments);  
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);  // bind default back
+
+			glCheckError();
+    {
+			ShaderHandle* framSha = get_shader(frameShader);
+			LASTWRITES[frame_frag] = Win32GetLastWriteTime(txt_file_names[frame_frag]);
+			LASTWRITES[frame_vert] = Win32GetLastWriteTime(txt_file_names[frame_vert]);
+
+			char* fvert = load_file(frame_vert,NULL);
+			uint fvid = compile_shader(GL_VERTEX_SHADER,fvert);
+			free(fvert);
+			fvert = NULL;
+
+		    char* ffrag = load_file(frame_frag,NULL);
+			uint ffid = compile_shader(GL_FRAGMENT_SHADER,ffrag);
+			free(ffrag);
+			ffrag = NULL;
+
+			framSha->progId = glCreateProgram();
+			glAttachShader(framSha->progId,fvid);
+			glAttachShader(framSha->progId,ffid);
+
+		    add_attribute(framSha,"aPos");
+		    add_attribute(framSha,"aTexCoords");
+			link_shader(framSha,fvid,ffid);
+			use_shader(framSha);
+		    unuse_shader(framSha);
+			glCheckError();
+	}
+	
+	uint frameVao = 0;
+	{
+			glGenVertexArrays(1,&frameVao);
+			uint frameVertBuff = 0;
+			glGenBuffers(1,&frameVertBuff);
+			glBindVertexArray(frameVao);
+			glBindBuffer(GL_ARRAY_BUFFER,frameVertBuff);
+			glCheckError();
+			glEnableVertexAttribArray(0);	
+			glVertexAttribPointer(0,2,GL_FLOAT,GL_FALSE,4 * sizeof(float),(void*)0);
+			glEnableVertexAttribArray(1);	
+			glVertexAttribPointer(1,2,GL_FLOAT,GL_FALSE,4 * sizeof(float),(void*)(2 * sizeof(float)));
+			glCheckError();
+			glBufferData(GL_ARRAY_BUFFER,sizeof(float) * 36,NULL,GL_STATIC_DRAW);
+			glBufferSubData(GL_ARRAY_BUFFER,0,sizeof(float)* 36, quadVertices);
+			glCheckError();
+			glBindBuffer(GL_ARRAY_BUFFER,0);
+			glCheckError();
+
+			glBindVertexArray(0);
+	}
+   
+
+// frame buffers for blurring
+	unsigned int pingpongFBO[2];
+    unsigned int pingpongColorBuffers[2];
+    glGenFramebuffers(2, pingpongFBO);
+    glGenTextures(2, pingpongColorBuffers);
+			glCheckError();
+    for (unsigned int i = 0; i < 2; i++)
+   {
+			glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[i]);
+			glBindTexture(GL_TEXTURE_2D, pingpongColorBuffers[i]);
+			glTexImage2D(
+				GL_TEXTURE_2D, 0, GL_RGB16F, SCREENWIDHT, SCREENHEIGHT, 0, GL_RGB, GL_FLOAT, NULL
+			);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glFramebufferTexture2D(
+				GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pingpongColorBuffers[i], 0
+			);
+
+			if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		    {
+				printf("Frame buffers arent baked! \n");
+				assert(0);
+		    }
+			glCheckError();
+
+    }
+	//blurring program
+    {
+		ShaderHandle* sha = get_shader(BlurShader);
+		//ShaderHandle* framSha = get_shader(frameShader);
+		LASTWRITES[blur_frag] = Win32GetLastWriteTime(txt_file_names[blur_frag]);
+		LASTWRITES[blur_vert] = Win32GetLastWriteTime(txt_file_names[blur_vert]);
+
+		char* fvert = load_file(blur_vert,NULL);
+    	uint fvid = compile_shader(GL_VERTEX_SHADER,fvert);
+		free(fvert);
+		fvert = NULL;
+
+		char* ffrag = load_file(blur_frag,NULL);
+		uint ffid = compile_shader(GL_FRAGMENT_SHADER,ffrag);
+		free(ffrag);
+		ffrag = NULL;
+
+		sha->progId = glCreateProgram();
+		glAttachShader(sha->progId,fvid);
+		glAttachShader(sha->progId,ffid);
+			glCheckError();
+
+		add_attribute(sha,"aPos");
+		add_attribute(sha,"aTexCoords");
+		link_shader(sha,fvid,ffid);
+		use_shader(sha);
+		unuse_shader(sha);
+		glCheckError();
+	
+	}
+    uint BlurVao = 0;
+	{
+			glGenVertexArrays(1,&BlurVao);
+			uint frameVertBuff = 0;
+			glGenBuffers(1,&frameVertBuff);
+			glBindVertexArray(BlurVao);
+			glBindBuffer(GL_ARRAY_BUFFER,frameVertBuff);
+			glCheckError();
+			glEnableVertexAttribArray(0);	
+			glVertexAttribPointer(0,2,GL_FLOAT,GL_FALSE,4 * sizeof(float),(void*)0);
+			glEnableVertexAttribArray(1);	
+			glVertexAttribPointer(1,2,GL_FLOAT,GL_FALSE,4 * sizeof(float),(void*)(2 * sizeof(float)));
+			glCheckError();
+			glBufferData(GL_ARRAY_BUFFER,sizeof(float) * 36,NULL,GL_STATIC_DRAW);
+			glBufferSubData(GL_ARRAY_BUFFER,0,sizeof(float)* 36, quadVertices);
+			glCheckError();
+			glBindBuffer(GL_ARRAY_BUFFER,0);
+			glCheckError();
+
+			glBindVertexArray(0);
+	}
+
+	/*
+	*LASTWRITES[model_frag] = Win32GetLastWriteTime(txt_file_names[model_frag]);
+		LASTWRITES[model_vert] = Win32GetLastWriteTime(txt_file_names[model_vert]);
+		ShaderHandle* shader = get_shader(SHA_PROG_NO_UV);// &rend->withTex;
+		rend->noTex = SHA_PROG_NO_UV;
+		char* vert_s = load_file(model_vert, NULL);
+		uint vertID = compile_shader(GL_VERTEX_SHADER, vert_s);
+		free(vert_s);
+
+		char* frag_s = load_file(model_frag, NULL);
+		uint fragID = compile_shader(GL_FRAGMENT_SHADER, frag_s);
+		free(frag_s);
+		shader->progId = glCreateProgram();
+		glAttachShader(shader->progId, vertID);
+		glAttachShader(shader->progId, fragID);
+
+		add_attribute(shader, "vertexPosition");
+		add_attribute(shader, "normal");
+
+		link_shader(shader, vertID, fragID);
+
+		use_shader(shader);
+		/*vec3 te = { 0 };
+		set_vec3(shader, "material.diffuse", &te);
+		unuse_shader(shader);
+		glCheckError();
+	* */ 
+    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
@@ -656,7 +882,7 @@ int main()
 			currentFps = 1.f / (add / 200.f);
 			updating = 0;
 		}
-		if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+		if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS)
 		{
 			break;
 		}
@@ -674,7 +900,8 @@ int main()
 			}
 		}
 
-		if( show_engine_stats(ctx,currentFps,currentFrameTime))
+		if( show_engine_stats(ctx,currentFps,currentFrameTime,engine.camera.cameraDir,engine.camera.yaw,engine.camera.pitch
+								,engine.camera.cameraPos))
 		{
 			dispose_game(&engine);
 			load_DLL(&game_dll, "DebugBin/game.dll");
@@ -712,12 +939,16 @@ int main()
 
 			glCheckError();
 		}
-
-
-		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+		//FIRST PASS!
+		glBindFramebuffer(GL_FRAMEBUFFER,FrameBuffer);
+		
+		glClearColor(0.f, 0.f, 0.f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		
+		glEnable(GL_DEPTH_TEST);
+		glEnable(GL_MULTISAMPLE);
 
-
+		glEnable(GL_CULL_FACE);  
 
 		perspective(&projection, deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 10000.f);
 
@@ -725,11 +956,12 @@ int main()
 		vec3 pos = { 0 };
 
 	
+		//glEnable(GL_FRAMEBUFFER_SRGB);
 		render_models(&rend, engine.renderArray, engine.sizeOfRenderArray, &engine.camera, pro);
 		render_debug_lines(&engine.drend,&engine.camera.view);
 		glCheckError();
 
-
+#if 1
 
 		glActiveTexture(GL_TEXTURE0);
 		ShaderHandle* skysha = get_shader(skyboxShader);
@@ -752,6 +984,69 @@ int main()
 		glDrawArrays(GL_TRIANGLES, 0, 36);
 		glDepthFunc(GL_LESS);
 		unuse_shader(skysha);
+		glBindVertexArray(0);
+#endif
+
+		//glDisable(GL_FRAMEBUFFER_SRGB);
+		
+
+		//SECOND PASS!
+		glBindFramebuffer(GL_FRAMEBUFFER,0);
+
+		//Blurr calculations!
+		
+		ubyte horizontal = 1, first_iteration = 1;
+        uint amount = 5;
+        //shaderBlur.use();
+		glBindVertexArray(BlurVao);
+		ShaderHandle* blursha = get_shader(BlurShader);
+		use_shader(blursha);
+		glActiveTexture(GL_TEXTURE0);
+		//TODO tama!!!!
+		glDisable(GL_DEPTH_TEST);
+        for (unsigned int i = 0; i < amount; i++)
+        {
+            glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[horizontal]);
+            //shaderBlur.setInt("horizontal", horizontal);
+			set_uniform_int(blursha,"horizontal", horizontal);
+            glBindTexture(GL_TEXTURE_2D, first_iteration ? FrameTextures[1] : pingpongColorBuffers[!horizontal]);  
+			// bind texture of other framebuffer (or scene if first iteration)
+		    
+		    glDrawArrays(GL_TRIANGLES, 0, 6);  
+
+            horizontal = !horizontal;
+            if (first_iteration)
+                first_iteration = 0;
+        }
+		unuse_shader(blursha);
+		glBindVertexArray(0);
+	
+   //     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		
+		
+		//post processing stuff!
+		glBindFramebuffer(GL_FRAMEBUFFER,0);
+
+		glClearColor(0.f, 0.f, 0.f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+		
+		glBindVertexArray(frameVao);
+		ShaderHandle* framSha = get_shader(frameShader);
+		use_shader(framSha);
+
+		set_uniform_int(framSha,"screenTexture",0);
+		set_uniform_int(framSha,"BlurTexture",1);
+
+		glDisable(GL_DEPTH_TEST);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D,FrameTextures[0]); // 0 is normal scene
+        glActiveTexture(GL_TEXTURE1);
+				
+		glBindTexture(GL_TEXTURE_2D,pingpongColorBuffers[!horizontal]);  
+
+		glDrawArrays(GL_TRIANGLES, 0, 6);  
+
+
 		glBindVertexArray(0);
 
 		render_nuklear();
@@ -984,7 +1279,7 @@ void hotload_shaders(double dt)
 					tempsha.progId = glCreateProgram();
 					glAttachShader(tempsha.progId, vertID);
 					glAttachShader(tempsha.progId, fragID);
-
+					
 					add_attribute(&tempsha, "vertexPosition");
 
 					uint suc = soft_link_shader(&tempsha, vertID, fragID);

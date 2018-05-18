@@ -27,7 +27,11 @@ typedef struct
 
 inline void init_renderer(Renderer *rend)
 {
+	int vaotemp = 0;
+	glGenVertexArrays(1,&vaotemp);
+	glBindVertexArray(vaotemp);
 	{
+		glCheckError();
 		/* with texture*/
 		LASTWRITES[frag_sha] = Win32GetLastWriteTime(txt_file_names[frag_sha]);
 		LASTWRITES[vert_sha] = Win32GetLastWriteTime(txt_file_names[vert_sha]);
@@ -35,24 +39,32 @@ inline void init_renderer(Renderer *rend)
 		rend->withTex = SHA_PROG_UV;
 		char* vert_s = load_file(vert_sha, NULL);
 		uint vertID = compile_shader(GL_VERTEX_SHADER, vert_s);
+		glCheckError();
 		free(vert_s);
 
 		char* frag_s = load_file(frag_sha, NULL);
 		uint fragID = compile_shader(GL_FRAGMENT_SHADER, frag_s);
+		glCheckError();
 		free(frag_s);
 		shader->progId = glCreateProgram();
 		glAttachShader(shader->progId, vertID);
 		glAttachShader(shader->progId, fragID);
 
+		glCheckError();
 		add_attribute(shader, "vertexPosition");
 		add_attribute(shader, "uv");
 		add_attribute(shader, "normal");
 
+		glCheckError();
 
 		link_shader(shader, vertID, fragID);
 
+		glUseProgram(shader->progId);
+		glCheckError();
 		use_shader(shader);
+		glCheckError();
 		unuse_shader(shader);
+		glCheckError();
 	}
 
 
@@ -82,6 +94,7 @@ inline void init_renderer(Renderer *rend)
 		/*vec3 te = { 0 };
 		set_vec3(shader, "material.diffuse", &te);*/
 		unuse_shader(shader);
+		glCheckError();
 	}
 
 	//uint VertBo,NormBo,UvOB, VAOtex,vaoNoTex;
@@ -140,6 +153,7 @@ inline void init_renderer(Renderer *rend)
 	rend->viewLOCnoTex = glGetUniformLocation(noTex->progId, "view");
 	rend->projectionLOCnoTex = glGetUniformLocation(noTex->progId, "projection");
 
+	glCheckError();
 	//rend->VaoNoTex = vaoNoTex;
 	//rend->VaoTex = VAOtex;
 
@@ -147,8 +161,15 @@ inline void init_renderer(Renderer *rend)
 	//rend->VertBO = VertBo;
 	//rend->NormBO = NormBo;
 
-	assert(!(rend->modelLOCtex == GL_INVALID_INDEX || rend->viewLOCtex == GL_INVALID_INDEX || rend->projectionLOCtex == GL_INVALID_INDEX || rend->modelLOCnoTex == GL_INVALID_INDEX ||
-		rend->viewLOCnoTex == GL_INVALID_INDEX || rend->viewLOCnoTex == GL_INVALID_INDEX || rend->projectionLOCnoTex == GL_INVALID_INDEX));
+	assert(!(rend->modelLOCtex == GL_INVALID_INDEX 
+		|| rend->viewLOCtex == GL_INVALID_INDEX 
+		|| rend->projectionLOCtex == GL_INVALID_INDEX 
+		|| rend->modelLOCnoTex == GL_INVALID_INDEX 
+		|| rend->viewLOCnoTex == GL_INVALID_INDEX 
+		|| rend->viewLOCnoTex == GL_INVALID_INDEX 
+		|| rend->projectionLOCnoTex == GL_INVALID_INDEX));
+
+	glBindVertexArray(0);
 }
 
 
@@ -196,13 +217,23 @@ inline void render_models(const Renderer *rend,const renderData** data,const uin
 		mat4 model = { 0 };
 		identity(&model);
 		translate_mat4(&model, &model, data[i]->position);
-		rotate_mat4_Z(&model, deg_to_rad(data[i]->Rotation.z));
-		rotate_mat4_Y(&model, deg_to_rad(data[i]->Rotation.y));
-		rotate_mat4_X(&model, deg_to_rad(data[i]->Rotation.x));
+
+		rotate_mat4_Y(&model, data[i]->Rotation.y);
+		rotate_mat4_Z(&model, data[i]->Rotation.z);
+		rotate_mat4_X(&model, data[i]->Rotation.x);
 		scale_mat4(&model, data[i]->scale);
 
 		glCheckError();
 		set_vec3(withTex, "material.specular", &data[i]->material.specular);
+		vec3 lightscale = {1.f,1.f,1.f};
+		if(data[i]->modelId == PatePallo)
+		{
+				lightscale.x = 5.f;
+				lightscale.y = 5.f;
+				lightscale.z = 5.f;
+		}
+		set_vec3(withTex, "LightScale", &lightscale);
+
 		set_uniform_float(withTex, "material.shininess", data[i]->material.shininess);
 		glCheckError();
 

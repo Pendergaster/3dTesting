@@ -2,8 +2,6 @@
 
 #define MAX_VER_AMOUNT 30000
 
-
-
 static vec3* vertexes = NULL;
 static vec3* normals = NULL;
 static vec2* texturecoords = NULL;
@@ -32,7 +30,9 @@ ModelHandle load_model(const int model)
 
 	if(vertexes == NULL)
 	{
-		vertexes = malloc(sizeof(vec3)*MAX_VER_AMOUNT + sizeof(vec2)*MAX_VER_AMOUNT + sizeof(vec3)*MAX_VER_AMOUNT +  sizeof(int) * MAX_VER_AMOUNT);
+		vertexes = malloc(sizeof(vec3)*MAX_VER_AMOUNT + 
+				sizeof(vec2)*MAX_VER_AMOUNT + sizeof(vec3)*MAX_VER_AMOUNT +  sizeof(int) * MAX_VER_AMOUNT);
+
 		texturecoords = (vec2*)(vertexes + MAX_VER_AMOUNT);
 		normals = (vec3*)(texturecoords + MAX_VER_AMOUNT);
 		IndexBuffer = (int*)(normals + MAX_VER_AMOUNT);
@@ -53,9 +53,9 @@ ModelHandle load_model(const int model)
 		{
 			assert(vertexesSize + 1 < MAX_VER_AMOUNT);
 			int matches = fscanf(file, "%f %f %f\n", &vertexes[vertexesSize].x, &vertexes[vertexesSize].y, &vertexes[vertexesSize].z);
-			largestX = largestX < abs(vertexes[vertexesSize].x) ? abs(vertexes[vertexesSize].x) : largestX;
-			largestY = largestY < abs(vertexes[vertexesSize].y) ? abs(vertexes[vertexesSize].y) : largestY;
-			largestZ = largestZ < abs(vertexes[vertexesSize].z) ? abs(vertexes[vertexesSize].z) : largestZ;
+			largestX = largestX < fabs(vertexes[vertexesSize].x) ? fabs(vertexes[vertexesSize].x) : largestX;
+			largestY = largestY < fabs(vertexes[vertexesSize].y) ? fabs(vertexes[vertexesSize].y) : largestY;
+			largestZ = largestZ < fabs(vertexes[vertexesSize].z) ? fabs(vertexes[vertexesSize].z) : largestZ;
 			vertexesSize += 1;
 			if (matches != 3) {
 				FATALERROR;
@@ -103,8 +103,10 @@ ModelHandle load_model(const int model)
 			{
 				// no texture coords
 				assert(indexBufferSize + 6 < MAX_VER_AMOUNT);
-				int matches = fscanf(file, "%d/%d/%d", &IndexBuffer[indexBufferSize], &IndexBuffer[indexBufferSize + 1], &IndexBuffer[indexBufferSize + 2]);
-				matches += fscanf(file, "%d/%d/%d", &IndexBuffer[indexBufferSize + 3], &IndexBuffer[indexBufferSize + 4], &IndexBuffer[indexBufferSize + 5]);
+				int matches = fscanf(file, "%d/%d/%d", 
+								&IndexBuffer[indexBufferSize], &IndexBuffer[indexBufferSize + 1], &IndexBuffer[indexBufferSize + 2]);
+				matches += fscanf(file, "%d/%d/%d", 
+								&IndexBuffer[indexBufferSize + 3], &IndexBuffer[indexBufferSize + 4], &IndexBuffer[indexBufferSize + 5]);
 
 				indexBufferSize += 6;
 				if (matches != 6) {

@@ -114,6 +114,10 @@ static inline float deg_to_rad(float deg)
 {
 	return deg * (pi / 180);
 }
+static inline float rad_to_deg(float rad)
+{
+		return rad * (180.f / pi);
+}
 static inline void mult_mat4(mat4* result, const mat4* lhv, const mat4* rhv)
 {
 	/*assume that result might be same as lhv*/
@@ -172,10 +176,10 @@ static inline void create_rotate_mat4(mat4* Result, vec3 axis, float angle)
 	normalize_vec3(&axis);
 
 
-	Result->mat[0][0] = axis.x * axis.x * k + co;		Result->mat[0][1] = axis.x *axis.y * k + axis.z*si; Result->mat[0][2] = axis.x * axis.z * k - axis.y*si;	Result->mat[0][3] = 0;
-	Result->mat[1][0] = axis.x*axis.y*k - axis.z * si;	Result->mat[1][1] = axis.y * axis.y * k + co; Result->mat[1][2] = axis.y * axis.z * k + axis.x*si;	Result->mat[1][3] = 0;
-	Result->mat[2][0] = axis.x *axis.z * k + axis.y*si; Result->mat[2][1] = axis.y * axis.z * k - axis.x*si; Result->mat[2][2] = axis.z * axis.z * k + co;			Result->mat[2][3] = 0;
-	Result->mat[3][0] = 0;								Result->mat[3][1] = 0;								Result->mat[3][2] = 0;									Result->mat[3][3] = 1;
+	Result->mat[0][0] = axis.x * axis.x * k + co;Result->mat[0][1] = axis.x *axis.y * k + axis.z*si; Result->mat[0][2] = axis.x * axis.z * k - axis.y*si;	Result->mat[0][3] = 0;
+	Result->mat[1][0] = axis.x*axis.y*k - axis.z * si;Result->mat[1][1] = axis.y * axis.y * k + co; Result->mat[1][2] = axis.y * axis.z * k + axis.x*si;	Result->mat[1][3] = 0;
+	Result->mat[2][0] = axis.x *axis.z * k + axis.y*si;Result->mat[2][1] = axis.y * axis.z * k - axis.x*si; Result->mat[2][2] = axis.z * axis.z * k + co;Result->mat[2][3] = 0;
+	Result->mat[3][0] = 0;Result->mat[3][1] = 0;Result->mat[3][2] = 0;Result->mat[3][3] = 1;
 
 
 }
@@ -285,6 +289,10 @@ static inline void reduce_vec3_inplace(vec3* v, float lenght)
 		normalize_vec3(v);
 		scale_vec3(v,v,lenght);
 	}
+}
+static inline float vec3_multi_lenght(const vec3* v)
+{
+	return v->x * v->x + v->y * v->y + v->z * v->z; 
 }
 static inline void add_vec4(vec4* res, const vec4* lhv, const vec4* rhv)
 {

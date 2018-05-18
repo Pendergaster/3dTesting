@@ -54,7 +54,7 @@ static inline void init_tree(AABBtree* tree)
 
 #define ARRAY_INDEX(ARRAY,OBJ)(OBJ - ARRAY)
 #define FATTEN 0.5f
-#define VEL_MULT 20.f
+#define VEL_MULT 0.5f
 static inline uint create_new_leaf(AABBtree* tree,const Object* obj) // todo -> FATTEN IT UP BOIIII
 {	
 	if(tree->freelist.num == 0)
@@ -63,9 +63,9 @@ static inline uint create_new_leaf(AABBtree* tree,const Object* obj) // todo -> 
 		GET_NEW_OBJ(tree->NodeArrayallocator,n);
 		n->type = Leaf;
 		n->object = obj;
-		n->p.x = obj->base->position.x + obj->velocity.x;
-		n->p.y = obj->base->position.y + obj->velocity.y;
-		n->p.z = obj->base->position.z + obj->velocity.z;
+		n->p.x = obj->base->position.x + obj->velocity.x * VEL_MULT / 2.f;
+		n->p.y = obj->base->position.y + obj->velocity.y * VEL_MULT / 2.f;
+		n->p.z = obj->base->position.z + obj->velocity.z * VEL_MULT / 2.f;
 
 		float fattenx = (obj->velocity.x * VEL_MULT) / 2.f;
 		float fatteny = (obj->velocity.y * VEL_MULT) / 2.f;
@@ -86,18 +86,18 @@ static inline uint create_new_leaf(AABBtree* tree,const Object* obj) // todo -> 
 
 		ret->type = Leaf;
 		ret->object = obj;
-		ret->p.x = obj->base->position.x + obj->velocity.x;
-		ret->p.y = obj->base->position.y + obj->velocity.y;
-		ret->p.z = obj->base->position.z + obj->velocity.z;
+		ret->p.x = obj->base->position.x + obj->velocity.x * VEL_MULT / 2.f;
+		ret->p.y = obj->base->position.y + obj->velocity.y * VEL_MULT / 2.f;
+		ret->p.z = obj->base->position.z + obj->velocity.z * VEL_MULT / 2.f;
 
 		float fattenx = (obj->velocity.x * VEL_MULT) / 2.f;
 		float fatteny = (obj->velocity.y * VEL_MULT) / 2.f;
 		float fattenz = (obj->velocity.z * VEL_MULT) / 2.f;
 
 		ret->w = obj->dims;
-		ret->w.x += abs(fattenx);
-		ret->w.y += abs(fatteny);
-		ret->w.z += abs(fattenz);
+		ret->w.x += fabs(fattenx);
+		ret->w.y += fabs(fatteny);
+		ret->w.z += fabs(fattenz);
 		return	ARRAY_INDEX(tree->allocator,ret);
 		
 	}
@@ -551,13 +551,13 @@ static uint inline update_object_in_tree(AABBtree* tree,uint node)
 
 	if(reinsert)
 	{
-		printf("REINSERTING\n");
+		//printf("REINSERTING\n");
 		remove_node(tree,node);
 		node = insert_to_tree(tree,ob);
 	}
 	else
 	{
-		printf("NOT INSERTINGREE\n");
+		///printf("NOT INSERTINGREE\n");
 	}
 	return node;
 }
@@ -617,7 +617,7 @@ static void inline query_area(AABBtree* tree, vec3 pos, float r,ObjectBuffer* bu
 			if(current->type == Leaf)
 			{
 				//printf("VISITED\n");
-				assert(current->object->base->modelId == Planet1);
+				//assert(current->object->base->modelId == Planet1);
 				PUSH_NEW_OBJ(tree->objectbuffer, current->object);
 			}
 			else
