@@ -15,6 +15,6 @@ I used C as programming language and project is build as unity build.
 - OpenGL
 - [Vim](https://www.vim.org/)
 
-----# **Small demo gif**
 
----![---laatikkoja---la---atikkoVi---d.gif)
+
+![pic](pic1.png)
