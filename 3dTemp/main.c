@@ -15,6 +15,11 @@
 #include <nuklear_glfw_gl3.h>
 #include <Windows.h>
 #include <smallDLLloader.h>
+#ifdef MULTITHREAD
+#define THREAD_IMPLEMENTATION
+#endif
+#include <kthp.h>
+
 FILETIME Win32GetLastWriteTime(const char* path)
 {
 	FILETIME time = { 0 };
@@ -70,6 +75,9 @@ typedef struct
 		FILE(frame_frag)\
 		FILE(blur_vert)\
 		FILE(blur_frag)\
+		FILE(pokemon_frag)\
+		FILE(particle_frag)\
+		FILE(particle_vert)\
 
 
 #define TXT_FILES(FILE) \
@@ -114,10 +122,10 @@ FILETIME LASTWRITES[maxtxtfiles];
 #define FATALERRORMESSAGE(STRING) printf(STRING); assert(0);
 
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
-{
-	glViewport(0, 0, width, height);
-}
+//void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+//{
+//	glViewport(0, 0, width, height);
+//}
 
 float fov = 45.f;
 float fovSens = 1.5f;
@@ -196,8 +204,8 @@ void loadTexture(const int file)
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 	glGenTextures(1, &tex->ID);
 	glBindTexture(GL_TEXTURE_2D, tex->ID);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);//GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);//GL_REPEAT);
 
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -205,8 +213,8 @@ void loadTexture(const int file)
 	unsigned char* data = stbi_load(pic_file_names[file], &tex->widht, &tex->height, &tex->channels,0);
 	if(!data)
 	{
+		printf("FAILED TO LOAD PICTURE %s\n", pic_file_names[file]);
 		FATALERROR;
-		//FATALERRORMESSAGE("FAILED TO LOAD PICTURE %s\n", pic_file_names[file]);
 	}
 	if (tex->channels == 3)
 	{
@@ -483,7 +491,7 @@ void init_light(Light* l)
 }
 
 
-
+#include "source/particle_system.c"
 #include "source/modelrendering.c"
 void hotload_shaders(double dt);
 #define MAX_VERTEX_BUFFER 512 * 1024
@@ -497,6 +505,10 @@ static void error_callback(int e, const char *d)
 #include "source/nuklear_util.c"
 #include "source/debugrendering.c"
 
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+	glViewport(0, 0, width, height);
+}
 //CREATEDYNAMICARRAY(int, foo)
 //CREATEDYNAMICARRAY(vec2, vert_bufferj
 //CREATEDYNAMICARRAY(int, index_buffer)
@@ -513,12 +525,14 @@ float quadVertices[] = {
 int main()
 {
 	//assert(0);	
+	int a = 2 + 2;
 	Engine engine = {0};
 	engptr = &engine;
 	textureCache = engine.textureCache;
 	model_cache = engine.model_cache;
 	memset(engine.textureCache, 0, sizeof(Texture)*maxpicfiles);
 	memset(engine.model_cache, 0, sizeof(ModelHandle)*maxmodelfiles);
+	
 	//memset(engine.skyBoxCache, 0, sizeof(ModelHandle)*maxmodelfiles);
 
 
@@ -528,7 +542,12 @@ int main()
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_SAMPLES, 4);
 	
-	GLFWwindow* window = glfwCreateWindow(SCREENWIDHT,SCREENHEIGHT, "Tabula Rasa", NULL, NULL);
+	GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+	GLFWwindow* window = glfwCreateWindow(SCREENWIDHT,SCREENHEIGHT, "Tabula Rasa", monitor, NULL);
+	const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+    glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+	SCREENWIDHT = mode->width;
+	SCREENHEIGHT = mode->height;
 	if (window == NULL)
 	{
 		printf("Failed to create window\n");
@@ -549,6 +568,7 @@ int main()
 	glfwSetMouseButtonCallback(window, mouse_button_callback);
 	glfwSetCursorPosCallback(window, cursor_position_callback);
 	glfwSetScrollCallback(window, scroll_callback);
+	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 	
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	//init_engine(&engine);
@@ -603,6 +623,13 @@ int main()
 	//load_model(Planet1);
 
 	glCheckError();
+
+	//ParticleSystem PS = {0};
+
+    init_particle_system(&engine.PS,glfwGetTime());
+	///eTexture particleTexture = jkjkjkjiPatePallo);
+
+
 	//DebugRend debugRned = { 0 };
 	init_debugrend(&engine.drend);
 	glCheckError();
@@ -705,7 +732,7 @@ int main()
 		    char* ffrag = load_file(frame_frag,NULL);
 			uint ffid = compile_shader(GL_FRAGMENT_SHADER,ffrag);
 			free(ffrag);
-			ffrag = NULL;
+			ffrag = NULL; 
 
 			framSha->progId = glCreateProgram();
 			glAttachShader(framSha->progId,fvid);
@@ -718,7 +745,71 @@ int main()
 		    unuse_shader(framSha);
 			glCheckError();
 	}
-	
+	uint pokemonTex = 0;
+	{
+			ShaderHandle* framSha = get_shader(PokemonProg);
+			LASTWRITES[pokemon_frag] = Win32GetLastWriteTime(txt_file_names[pokemon_frag]);
+			//LASTWRITES[frame_vert] = Win32GetLastWriteTime(txt_file_names[frame_vert]);
+
+			char* fvert = load_file(frame_vert,NULL);
+			uint fvid = compile_shader(GL_VERTEX_SHADER,fvert);
+			free(fvert);
+			fvert = NULL;
+
+		    char* ffrag = load_file(pokemon_frag,NULL);
+			uint ffid = compile_shader(GL_FRAGMENT_SHADER,ffrag);
+			free(ffrag);
+			ffrag = NULL; 
+
+			framSha->progId = glCreateProgram();
+			glAttachShader(framSha->progId,fvid);
+			glAttachShader(framSha->progId,ffid);
+
+		    add_attribute(framSha,"aPos");
+		    add_attribute(framSha,"aTexCoords");
+			link_shader(framSha,fvid,ffid);
+			use_shader(framSha);
+		    unuse_shader(framSha);
+			glCheckError();
+
+
+
+
+			Texture tex = {0};//&textureCache[file];
+			//int* k = malloc(1000);
+			//k[3] = 0;
+			glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+			glGenTextures(1, &tex.ID);
+			glBindTexture(GL_TEXTURE_2D, tex.ID);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);//GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);//GL_REPEAT);
+
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+			unsigned char* data = stbi_load("criss_cross_pattern.png", &tex.widht, &tex.height, &tex.channels,0);
+			if(!data)
+			{
+				FATALERROR;
+				//FATALERRORMESSAGE("FAILED TO LOAD PICTURE %s\n", pic_file_names[file]);
+			}
+			if (tex.channels == 3)
+			{
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tex.widht, tex.height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+				glGenerateMipmap(GL_TEXTURE_2D);
+			}
+			else if (tex.channels == 4)
+			{
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex.widht, tex.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+				glGenerateMipmap(GL_TEXTURE_2D);
+			}
+			else
+			{
+				FATALERROR;
+			}
+			stbi_image_free(data);
+			pokemonTex = tex.ID;
+	}
 	uint frameVao = 0;
 	{
 			glGenVertexArrays(1,&frameVao);
@@ -851,13 +942,43 @@ int main()
 		glCheckError();
 	* */ 
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+#ifdef MULTITHREAD
+    kth_pool_t 	tp;
+	Game       	thread_Game;
+	Engine      thread_engine;
+#define RENDERDATA_SIZE 100000
+    renderData	render_data = malloc(sizeof(renderData) * RENDERDATA_SIZE);		
+#define NUM_THREADS 2
+    if (kth_pool_init(&tp, NUM_THREADS, 64))
+        return 1;
+
+    if (kth_pool_run(&tp))
+        return 2;
+#endif
+	
+	//ubyte PostProcess[2];
+	//memset(PostProcess, 0 ,sizeof(PostProcess));
+    
+    //float kernels[2][9] = 
+	//{
+	//		{
+		//1.f,1.f,1.f,1.f,−8.f,1.f,1.f,1.f,1.f
+	//	1.0f / 16.f, 2.0f / 16.f, 1.0f / 16.f,
+   // 2.0f / 16.f, 4.0f / 16.f, 2.0f / 16.f,
+    //1.0f / 16.f, 2.0f / 16.f, 1.0f / 16.f 
+	//		},
+	//		{
+	//	1.f,1.f,1.f,1.f,−8.f,1.f,1.f,1.f,1.f
+	//		}
+	//};
+		ubyte running = 1.f;
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
 
 		nk_glfw3_new_frame();
 		double newTime = glfwGetTime();
-
+		engine.currentTime = (float)newTime;
 		double frameTime = newTime - currentTime;
 		currentTime = newTime;
 		accumulator += frameTime;
@@ -886,22 +1007,22 @@ int main()
 		{
 			break;
 		}
-		if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS)
-		{
-			if (!engine.inputs.inputsDisabled)
-			{
-				engine.inputs.inputsDisabled = 1;
-				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-			}
-			else
-			{
-				engine.inputs.inputsDisabled = 0;
-				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-			}
-		}
+	//	if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS)
+	//	{
+	//		if (!engine.inputs.inputsDisabled)
+	//		{
+	//			engine.inputs.inputsDisabled = 1;
+	//			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+	//		}
+	//		else
+	//		{
+	//			engine.inputs.inputsDisabled = 0;
+	//			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	//		}
+		//}
 
 		if( show_engine_stats(ctx,currentFps,currentFrameTime,engine.camera.cameraDir,engine.camera.yaw,engine.camera.pitch
-								,engine.camera.cameraPos))
+								,engine.camera.cameraPos,&engine.distScale))
 		{
 			dispose_game(&engine);
 			load_DLL(&game_dll, "DebugBin/game.dll");
@@ -912,9 +1033,37 @@ int main()
 		}
 		//overview(ctx);
 		//calculator(ctx);
-		while (accumulator >= dt)
+		//
+		vec3 parPos = {-10,0,0};
+		//ParticleSpawner TEST_SPAWNER = DEFAULT_PARTICLESPAWNER;
+		//spawn_particle(&PS,parPos,0.5f,5.f, glfwGetTime());
+		 glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+
+#ifdef MULTITHREAD
+		thread_engine = engine; 
+
+#endif
+		if(is_key_activated(&engine.inputs,KEY_M))
 		{
-			update_game(&engine);
+				running = 0;	
+				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+		}
+		if(is_key_activated(&engine.inputs,KEY_N))
+		{
+				running = 1;	
+				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		}
+		while(accumulator >= dt)
+		{
+#ifdef MULTITHREAD
+		    	
+#endif
+		   if(running)
+		   {
+					update_game(&engine);
+		   } 
 			accumulator -= dt;
 
 			hotload_shaders(dt);
@@ -935,9 +1084,14 @@ int main()
 			vec3 dims = { 1,1,1 };
 			//draw_box(&debugRned, pos1, model_cache[Planet1].nativeScale);
 
+			//update_spawners(&PS,&TEST_SPAWNER,1,(float)dt,glfwGetTime());
 			populate_debugRend_buffers(&engine.drend);
+			glCheckError();
 
 			glCheckError();
+
+			create_buffers_particle(&engine.PS);
+			//break;
 		}
 		//FIRST PASS!
 		glBindFramebuffer(GL_FRAMEBUFFER,FrameBuffer);
@@ -959,6 +1113,11 @@ int main()
 		//glEnable(GL_FRAMEBUFFER_SRGB);
 		render_models(&rend, engine.renderArray, engine.sizeOfRenderArray, &engine.camera, pro);
 		render_debug_lines(&engine.drend,&engine.camera.view);
+		glCheckError();
+
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+		render_particles(&engine.PS,&engine.camera.view,&projection,glfwGetTime(),engine.textureCache[flare].ID);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glCheckError();
 
 #if 1
@@ -985,6 +1144,7 @@ int main()
 		glDepthFunc(GL_LESS);
 		unuse_shader(skysha);
 		glBindVertexArray(0);
+
 #endif
 
 		//glDisable(GL_FRAMEBUFFER_SRGB);
@@ -1025,25 +1185,55 @@ int main()
 		
 		
 		//post processing stuff!
+		glEnable(GL_MULTISAMPLE);
 		glBindFramebuffer(GL_FRAMEBUFFER,0);
 
 		glClearColor(0.f, 0.f, 0.f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 		
 		glBindVertexArray(frameVao);
-		ShaderHandle* framSha = get_shader(frameShader);
-		use_shader(framSha);
-
-		set_uniform_int(framSha,"screenTexture",0);
-		set_uniform_int(framSha,"BlurTexture",1);
-
-		glDisable(GL_DEPTH_TEST);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D,FrameTextures[0]); // 0 is normal scene
-        glActiveTexture(GL_TEXTURE1);
+		if(!Pokemon)
+		{
 				
-		glBindTexture(GL_TEXTURE_2D,pingpongColorBuffers[!horizontal]);  
+				ShaderHandle* framSha = get_shader(frameShader);
+				use_shader(framSha);
 
+				set_uniform_int(framSha,"screenTexture",0);
+				set_uniform_int(framSha,"BlurTexture",1);
+
+				glUniform1fv(glGetUniformLocation(framSha->progId, "kernel"), 9, currentKernel);
+				glDisable(GL_DEPTH_TEST);
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D,FrameTextures[0]); // 0 is normal scene
+				glActiveTexture(GL_TEXTURE1);
+						
+				glBindTexture(GL_TEXTURE_2D,pingpongColorBuffers[!horizontal]);  
+
+		}
+		else
+		{
+		
+				ShaderHandle* framSha = get_shader(PokemonProg);
+				use_shader(framSha);
+
+				set_uniform_int(framSha,"screenTexture",0);
+				set_uniform_int(framSha,"BlurTexture",1);
+				set_uniform_int(framSha,"DistTex",2);
+				set_uniform_float(framSha,"cutOff",engine.distScale);
+
+				glDisable(GL_DEPTH_TEST);
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D,FrameTextures[0]); // 0 is normal scene
+				glActiveTexture(GL_TEXTURE1);
+						
+				glBindTexture(GL_TEXTURE_2D,pingpongColorBuffers[!horizontal]);
+				glActiveTexture(GL_TEXTURE2);
+
+
+				glBindTexture(GL_TEXTURE_2D, pokemonTex); // 0 is normal scene
+
+
+		}
 		glDrawArrays(GL_TRIANGLES, 0, 6);  
 
 
@@ -1053,6 +1243,7 @@ int main()
 
 		glfwSwapBuffers(window);
 	}
+	dispose_particles(&engine.PS);
 	dispose_game(&engine);
 	dispose_model_memory();
 	dispose_debug_renderer(&engine.drend);

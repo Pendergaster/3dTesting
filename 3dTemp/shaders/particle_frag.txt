@@ -1,0 +1,25 @@
+
+#version 330 core
+
+in DATA
+{
+		vec2 TexCoords;
+		float Alpha;
+} frag_in;
+
+layout (location = 0) out vec4 color;
+layout (location = 1) out vec4 blurColor;
+
+uniform sampler2D tex;
+const float gamma = 2.2f;
+void main()
+{
+		
+		color = vec4(texture( tex , frag_in.TexCoords) );
+		color.w *= frag_in.Alpha;
+
+		color = vec4( pow(color.rgb , vec3(1.f/gamma))  ,1.f) ;
+		//color.w = frag_in.Alpha * ;
+		blurColor = color;
+
+}

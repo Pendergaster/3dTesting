@@ -177,6 +177,7 @@ inline void init_renderer(Renderer *rend)
 inline void render_models(const Renderer *rend,const renderData** data,const uint numData,const EngineCamera* camera,const LightValues light)
 {
 	if (numData == 0)return;
+	//numData = (int)(numData / 3.f);
 	ShaderHandle* withTex = get_shader(rend->withTex);
 	use_shader(withTex);
 	set_vec3(withTex, "ViewPos", &camera->cameraPos);
@@ -225,14 +226,14 @@ inline void render_models(const Renderer *rend,const renderData** data,const uin
 
 		glCheckError();
 		set_vec3(withTex, "material.specular", &data[i]->material.specular);
-		vec3 lightscale = {1.f,1.f,1.f};
-		if(data[i]->modelId == PatePallo)
-		{
-				lightscale.x = 5.f;
-				lightscale.y = 5.f;
-				lightscale.z = 5.f;
-		}
-		set_vec3(withTex, "LightScale", &lightscale);
+		//vec3 lightscale = //{1.f,1.f,1.f};
+		//if(data[i]->modelId == PatePallo)
+		//{
+		//		lightscale.x = 5.f;
+		//		lightscale.y = 5.f;
+		//		lightscale.z = 5.f;
+		//}
+		set_vec3(withTex, "LightScale", &data[i]->lightScale);
 
 		set_uniform_float(withTex, "material.shininess", data[i]->material.shininess);
 		glCheckError();

@@ -47,7 +47,7 @@ pushd DebugBin
 
 REM -LD -> buildaa .dll -MD jälkee
 REM nologo ei turhaa printtiä / /MD common runtime multithreaded   /   /link alottaa linkkaamisen / 
-cl -Zi %COMPILE_FLAGS%  /DEBUG ..\main.c ..\source\nuklear_inc.c ..\source\glad.c %includes% /MD /link %libs% -LIBPATH:../libraries 
+cl -O2 /DEBUG ..\main.c ..\source\nuklear_inc.c ..\source\glad.c %includes% /MD /link %libs% -LIBPATH:../libraries 
 popd
 )
 
@@ -64,7 +64,7 @@ pushd DebugBin
 
 REM -LD -> buildaa .dll -MD jälkee
 REM nologo ei turhaa printtiä / /MD common runtime multithreaded   /   /link alottaa linkkaamisen / 
-cl -Zi -nologo %COMPILE_FLAGS% %game_includes% ..\game\game.c  /MD /LD /link  %libs% -LIBPATH:../libraries  
+cl -O2 -nologo %game_includes% ..\game\game.c  /MD /LD /link  %libs% -LIBPATH:../libraries  
 popd
 )
 
@@ -84,7 +84,7 @@ SET EXE_NAME=engine.exe
 pushd DebugBin
 REM -LD -> buildaa .dll -MD jälkee
 REM nologo ei turhaa printtiä / /MD common runtime multithreaded   /   /link alottaa linkkaamisen / 
-cl -Zi %COMPILE_FLAGS% /DEBUG ..\main.c ..\source\nuklear_inc.c ..\source\glad.c %includes% /MD /link %libs% -LIBPATH:../libraries 
+cl -02 %COMPILE_FLAGS% /DEBUG ..\main.c ..\source\nuklear_inc.c ..\source\glad.c %includes% /MD /link %libs% -LIBPATH:../libraries 
 popd
 
 

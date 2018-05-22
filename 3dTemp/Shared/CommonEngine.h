@@ -2,6 +2,8 @@
 #define PNG_FILES(FILE) \
 		FILE(MoonTexture)\
 		FILE(SpaceshipTexture)\
+		FILE(flare)\
+		//FILE(criss_cross_pattern)\
 		//FILE(linux_pingu)\
 
 
@@ -80,8 +82,10 @@ enum EngineKeys
 	KEY_MAX = 1 << 30,
 	//max_keys
 };
-#define SCREENWIDHT 1400
-#define SCREENHEIGHT 900
+
+int SCREENWIDHT = 1400;
+int SCREENHEIGHT = 900;
+
 typedef struct
 {
 	uint32_t	keys;
@@ -242,14 +246,15 @@ typedef struct
 
 typedef struct
 {
-	int		modelId;
+	int			modelId;
 	vec3		Rotation;
 	vec3		position;
 	Material	material;
 	float		scale;
+	vec3        lightScale;
 } renderData;
 
-static const renderData DEFAULT_RENDERDATA = { .modelId = Planet1 ,.Rotation = { 0 },.position = { 0 },.material = { .diffuse = 0,.specular = { .x = 0.7f ,.y = 0.7f,.z = 0.7f },.shininess = 32.f },.scale = 1, };
+static const renderData DEFAULT_RENDERDATA = { .modelId = Planet1 ,.Rotation = { 0 },.position = { 0 },.material = { .diffuse = 0,.specular = { .x = 0.7f ,.y = 0.7f,.z = 0.7f },.shininess = 32.f },.scale = 1, .lightScale = {.x =  1.0f,.y = 1.0f,.z = 1.0f} };
 
 
 typedef struct
@@ -260,6 +265,7 @@ typedef struct
 	uint	nbo;
 	uint	uvbo;
 	vec3	nativeScale;
+	//vec3 	colorScale; 
 } ModelHandle;
 
 typedef struct
@@ -369,6 +375,183 @@ void draw_box(DebugRend* rend, const vec3 pos, const vec3 dim)
 
 #endif //  GAME_SIDE
 
+typedef struct
+{
+		vec2	times; //x starttime, y lifetime 
+		vec3  	startPosition;
+		vec3 	velocity;
+		float 	scale;
+} Particle;
+typedef struct
+{
+		Particle* 	particles;
+		uint		vao;
+		uint 		buffer;
+		int 		currentParticleIndex;
+		float       startTime;
+} ParticleSystem;
+
+#define MAX_PARTICLES 10000
+#ifdef GAME_SIDE
+
+
+
+enum SpawerType
+{
+		Cone,
+};
+
+typedef struct 
+{
+	uint type;
+	union
+	{
+		struct //cone
+		{
+				float spawnRate;
+				float spawnArea;
+				float xangle;
+				float yangle;
+				float timer;
+				vec3  position;
+				float velocity;
+				float scale;
+				float lifeTime;
+				float pitch;
+				float yaw;
+				vec3  upVec;
+		};
+	};
+} ParticleSpawner;
+
+static const ParticleSpawner DEFAULT_PARTICLESPAWNER = {.type = Cone,.spawnRate = 0.2f,.spawnArea = 1,
+		.xangle = 0.2f,.yangle = 0.2f, .timer = 0.f,
+		.position = {0},.velocity = 20.f,.scale = 0.5f,.lifeTime = 10.f, .pitch = 0.f, .yaw = 0.f ,.upVec = {0.f, 1.0f, 0.f}};
+
+unsigned int rand_interval(unsigned int min, unsigned int max)
+{
+	int r;
+	const unsigned int range = 1 + max - min;
+	const unsigned int buckets = RAND_MAX / range;
+	const unsigned int limit = buckets * range;
+
+	/* Create equal size buckets all in a row, then fire randomly towards
+	 * the buckets until you land in one of them. All buckets are equally
+	 * likely. If you land off the end of the line of buckets, try again. */
+	do{
+
+		r = rand();
+	} while (r >= limit);
+
+	return min + (r / buckets);
+}
+
+
+static void spawn_particle(ParticleSystem* ps,vec3 pos,vec3 velocity,float scale,float lifeTime,float spawnTime);
+
+static void update_spawners(ParticleSystem* ps,ParticleSpawner* spawners, uint amount,float dt,float currentTime)
+{
+		for(int i = 0; i < amount; i++)
+		{
+				ParticleSpawner* current = &spawners[i];
+				if(current->type == Cone)
+				{
+					current->timer += dt;
+					if(current->timer >= dt)
+					{
+						float pitch = current->pitch;
+						float yaw = current->yaw;
+						
+						pitch += rand_interval(0,(int)(current->xangle * 100 * 2)) * 0.01 - current->xangle;
+						yaw += rand_interval(0,(int)(current->yangle * 100 * 2)) * 0.01 - current->yangle;
+
+
+
+						current->timer = 0;
+						vec3 dir = {0};
+						dir.x = cosf(pitch) * cosf(yaw);		
+						dir.y = sinf(pitch);		
+						dir.z = sinf(yaw) * cosf(pitch);		
+
+						normalize_vec3(&dir);
+						scale_vec3(&dir,&dir,current->velocity);
+
+						
+						spawn_particle(ps,current->position,dir,current->scale,current->lifeTime,currentTime);	
+						
+
+
+					}
+				}
+		}
+}
+
+static inline void update_spawner(ParticleSystem* ps,ParticleSpawner* current,float dt,float currentTime )
+{
+				if(current->type == Cone)
+				{
+					current->timer += dt;
+					if(current->timer >= current->spawnRate)
+					{
+						float time =  current->timer - current->spawnRate ;
+						do
+						{
+								time -= current->spawnRate;
+						float pitch = current->pitch;
+						float yaw = current->yaw;
+						
+						pitch += rand_interval(0,(int)(current->xangle * 100 * 2)) * 0.01 - current->xangle;
+						yaw += rand_interval(0,(int)(current->yangle * 100 * 2)) * 0.01 - current->yangle;
+
+
+
+						current->timer = 0;
+						vec3 dir = {0};
+						dir.x = cosf(pitch) * cosf(yaw);		
+						dir.y = sinf(pitch);		
+						dir.z = sinf(yaw) * cosf(pitch);		
+
+						normalize_vec3(&dir);
+						scale_vec3(&dir,&dir,current->velocity);
+						
+						vec3 rightVec = {0};
+						cross_product(&rightVec, &current->upVec, &dir);
+						normalize_vec3(&rightVec);
+						float randX = rand_interval(0,(int)(current->spawnArea * 100 * 2)) * 0.01 - current->spawnArea;
+						float randY = rand_interval(0,(int)(current->spawnArea * 100 * 2)) * 0.01 - current->spawnArea;
+
+						//printf("randX %f \n",randX);
+						//printf("randY %f \n",randY);
+						vec3 tempVec = current->upVec;	
+						scale_vec3(&tempVec,&tempVec,randX);
+						scale_vec3(&rightVec,&rightVec,randY);
+						add_vec3(&tempVec,&tempVec,&rightVec);
+						reduce_vec3_inplace(&tempVec,current->spawnArea);
+
+						vec3 endPos = {0};
+						add_vec3(&endPos,&current->position,&tempVec);
+							
+
+						spawn_particle(ps,endPos,dir,current->scale,current->lifeTime,currentTime);	
+						}	
+						while(time > current->spawnRate);
+
+
+					}
+				}
+}
+
+static void spawn_particle(ParticleSystem* ps,vec3 pos,vec3 velocity,float scale,float lifeTime,float spawnTime)
+{
+	ps->particles[ps->currentParticleIndex].startPosition = pos;	
+	ps->particles[ps->currentParticleIndex].times.x = spawnTime;	
+	ps->particles[ps->currentParticleIndex].times.y = lifeTime; 	
+    ps->particles[ps->currentParticleIndex].velocity = velocity; 	
+	ps->particles[ps->currentParticleIndex++].scale = scale;
+	if(ps->currentParticleIndex >= MAX_PARTICLES) ps->currentParticleIndex = 0;
+}
+
+#endif
 
 typedef struct
 {
@@ -379,11 +562,14 @@ typedef struct
 	uint			skyBoxID;
 	uint			skyBoxvbo;
 	uint			skyBoxvao;
-	renderData**	renderArray;
+	renderData**		renderArray;
 	uint			sizeOfRenderArray;
 	void*			userdata;
 	DebugRend		drend;
 	float			DT;
+	float    		currentTime;
+	ParticleSystem  PS;
+	float 			distScale;
 } Engine;
 
 #ifdef GAME_SIDE

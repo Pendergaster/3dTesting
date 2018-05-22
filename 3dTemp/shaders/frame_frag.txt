@@ -5,6 +5,8 @@ in vec2 TexCoords;
 
 uniform sampler2D screenTexture;
 uniform sampler2D BlurTexture;
+uniform float[9]  kernel;
+//uniform sampler2D DistTex;
 const float offset = 1.0 / 300.0;  
  
 void main()
@@ -21,11 +23,11 @@ void main()
         vec2( offset, -offset)  // bottom-right    
     );
 
-    float kernel[9] = float[](
-        0, 0, 0,
-        0, 1, 0,
-        0, 0, 0
-    );
+    //float kernel[9] = float[](
+      //  0, 0, 0,
+      //  0, 1, 0,
+     //   0, 0, 0
+   // );
   
  /* float kernel[9] = float[](
     1.0 / 16, 2.0 / 16, 1.0 / 16,
@@ -52,6 +54,7 @@ void main()
 	
     vec3 mapped = col / (col + vec3(1.0));
 
-    
+
+   
     FragColor = vec4(mapped, 1.0);
 }

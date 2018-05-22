@@ -38,7 +38,8 @@ CREATEDYNAMICARRAY(renderData, renderArray)
     InvalidType,
 	Flocker,
 	Player,
-	Bullet
+	Bullet,
+	Planet
 };
 
 #define MAX_NEIGHS 8
@@ -60,7 +61,12 @@ typedef struct
 		};
 		struct
 		{
-			float 	lastShot;
+			float 				lastShot;
+			ParticleSpawner* 	particles;
+		};
+		struct
+		{
+				float radius;
 		};
 
 	};
@@ -70,7 +76,7 @@ static const Object DEFAULT_OBJECT = {0};
 CREATEDYNAMICARRAY(Object*,ObjectBuffer);
 CREATEDYNAMICARRAY(renderData*,renderDataBuffer);
 
-#define NUM_OBJS 100
+#define NUM_OBJS 4000
 #include "AABBtree.c"
 
 typedef struct
@@ -82,7 +88,7 @@ typedef struct
 	renderDataBuffer	freeRendList;
 } ObjectAllocator;
 
-#define POOL_SIZE 5000
+#define POOL_SIZE 100000
 
 float map(float min,float max,float norm,float dmin,float dmax);
 static inline void init_objectallocator(ObjectAllocator* al)
@@ -163,33 +169,41 @@ static inline void free_object(ObjectAllocator* al, Object* ob)
 	PUSH_NEW_OBJ(al->freeRendList, ob->base);
 }
 
+
 typedef struct
 {
-	renderDataBuffer 	rend;
-	AABBtree			tree;
-	ObjectAllocator		obAll;
-	//Object*			objects;
-	ObjectBuffer		objects;
-	ObjectBuffer		raybuffer;
-} Game;
+		ParticleSpawner 	spawners[20];
+		ParticleSpawner* 	freelist[20];
+		uint 				currentIndex;
+		uint 				numFree;
+} ParticleSpawnerAllocator;
 
-unsigned int rand_interval(unsigned int min, unsigned int max)
+ParticleSpawner* get_new_spawner(ParticleSpawnerAllocator* all)
 {
-	int r;
-	const unsigned int range = 1 + max - min;
-	const unsigned int buckets = RAND_MAX / range;
-	const unsigned int limit = buckets * range;
-
-	/* Create equal size buckets all in a row, then fire randomly towards
-	 * the buckets until you land in one of them. All buckets are equally
-	 * likely. If you land off the end of the line of buckets, try again. */
-	do{
-
-		r = rand();
-	} while (r >= limit);
-
-	return min + (r / buckets);
+    ParticleSpawner* ret = NULL;
+	if(all->numFree != 0)
+	{
+		ret = all->freelist[all->numFree - 1];	
+		all->numFree--;
+	}	
+	else
+	{
+			ret = &all->spawners[all->currentIndex++];
+	}
+	memset(ret,0,sizeof(ParticleSpawner));
+	return ret;
 }
+
+typedef struct
+{
+	renderDataBuffer 			rend;
+	AABBtree					tree;
+	ObjectAllocator				obAll;
+	//Object*			objects;
+	ObjectBuffer				objects;
+	ObjectBuffer				raybuffer;
+	ParticleSpawnerAllocator 	partAllo;
+} Game;
 
 
 #define MAX_FLOCK_VEL 2.f
@@ -242,7 +256,7 @@ EXPORT void init_game(void* p)
 	renderData* ship = player->base;
 	ship->material.diffuse = SpaceshipTexture;
 	ship->modelId = SpaceShip;
-	ship->position.x = 0;
+	ship->position.x = 200;
 	ship->position.y = 0;
 	ship->position.z = 0;
 	player->type = Player;
@@ -251,6 +265,40 @@ EXPORT void init_game(void* p)
 	player->dims = eng->model_cache[SpaceShip].nativeScale;
 	player->treeIndex = insert_to_tree(&game->tree,player);
 	player->velocity.x = -10.f;
+
+    player->particles = get_new_spawner(&game->partAllo);
+    *player->particles = DEFAULT_PARTICLESPAWNER;
+    player->particles->spawnArea = 0.5f;
+    player->particles->scale = 0.2f;
+    player->particles->spawnRate = 0.001f;
+    player->particles->lifeTime = 4.f;
+
+	eng->distScale = 0.f;
+
+	const vec3 planetPos[4] ={ 100.f, 50.f , 0.f,
+							10.f , 50.f  ,	-50.f,
+						    -100.f , 70.f , -10.f,
+							- 10.f ,-50.f , -60.f	}; 
+
+    for(int i = 0; i < 4; i++)
+	{
+			Object* player = new_object(&game->obAll);
+		    renderData* ship = player->base;
+		    ship->material.diffuse = MoonTexture;
+	        ship->modelId = Planet1;
+			ship->position = planetPos[i];
+			player->type = Planet;
+			PUSH_NEW_OBJ(game->objects,player);
+			PUSH_NEW_OBJ(game->rend,ship);
+			player->dims = eng->model_cache[Planet1].nativeScale;
+			scale_vec3(&player->dims, &player->dims,6.f);
+			player->base->scale = 6.f;
+			player->radius = eng->model_cache[Planet1].nativeScale.x * 6;
+			player->treeIndex = insert_to_tree(&game->tree,player);
+			//player->velocity.x = -10.f;
+	}
+
+
 	// if(is_key_activated(&eng->inputs,KEY_O))
 	// {
 	// 	remove_node(&game->tree,BACK(game->objects)->treeIndex);
@@ -262,7 +310,8 @@ EXPORT void init_game(void* p)
 }
 void update_objects(ObjectBuffer* objs,float dt,ObjectBuffer* buffer,
 		AABBtree* tree,DebugRend* drend,EngineCamera* camera,EngineInputs* inputs,
-		ObjectAllocator* all, ModelHandle* models,renderDataBuffer* 	rend);
+		ObjectAllocator* all, ModelHandle* models,renderDataBuffer* 	rend,
+		ParticleSystem* ps,float currentTime,float* distScale);
 
 EXPORT void update_game(void* p)
 {
@@ -312,8 +361,10 @@ EXPORT void update_game(void* p)
 	   }
 	   */	
 	update_objects(&game->objects,eng->DT,&game->raybuffer,&game->tree,
-				&eng->drend,&eng->camera, &eng->inputs,&game->obAll,eng->model_cache,&game->rend);
+				&eng->drend,&eng->camera, &eng->inputs,&game->obAll,eng->model_cache,&game->rend,
+				&eng->PS,eng->currentTime,&eng->distScale);
 
+    //update_spawners(&eng->PS,game->partAllo.)
 
 	// ObjectBuffer temp;
 	// INITARRAY(temp);
@@ -383,7 +434,8 @@ float map(float min,float max,float norm,float dmin,float dmax)
 
 void update_objects(ObjectBuffer* objs,float dt,ObjectBuffer* buffer,
 		AABBtree* tree,DebugRend* drend,EngineCamera* camera,EngineInputs* inputs,
-		ObjectAllocator* all,ModelHandle* models,renderDataBuffer* 	rend)
+		ObjectAllocator* all,ModelHandle* models,renderDataBuffer* 	rend,
+		ParticleSystem* ps,float currentTime,float *distScale)
 {
 
 	vec3 target = {0};
@@ -540,8 +592,8 @@ void update_objects(ObjectBuffer* objs,float dt,ObjectBuffer* buffer,
 				add_vec3(&currentOb->acceleration,&currentOb->acceleration,&separation);
 			}
 			float dist = vec3_lenght(&currentOb->base->position);
-			//if (dist > 100)
-			//{
+			if (dist > 180.f)
+			{
 
 			//steer
 			vec3 desired = {0};
@@ -551,13 +603,15 @@ void update_objects(ObjectBuffer* objs,float dt,ObjectBuffer* buffer,
 			neg_vec3(&desired,&desired,&currentOb->velocity);
 
 
-			float steer_scale = map(0,100,dist,0,STEER_MULT);
+			//float steer_scale = map(0,100,dist,0,STEER_MULT);
 			//printf("%.4f\n", steer_scale);	
 			//scale_vec3(&desired,&desired,steer_scale);
-			scale_vec3(&desired,&desired,steer_scale);
-			reduce_vec3_inplace(&desired,MAX_FORCE );	
+			normalize_vec3(&desired);
+			float accLenght = vec3_lenght(&currentOb->acceleration);
+			scale_vec3(&desired,&desired,accLenght * 1.2f);
+			//reduce_vec3_inplace(&desired,MAX_FORCE * 2.f);	
 			add_vec3(&currentOb->acceleration,&currentOb->acceleration,&desired);
-			//}
+			}
 
 
 			currentOb->velocity.x += currentOb->acceleration.x * dt;
@@ -670,6 +724,8 @@ void update_objects(ObjectBuffer* objs,float dt,ObjectBuffer* buffer,
 						data->position = currentOb->base->position;
 						data->modelId = PatePallo;
 						data->material.diffuse = PalloTexture; 
+						data->lightScale.x = 10.f;
+						data->lightScale.y = 10.f;
 						bullet->dims = models[Planet1].nativeScale;
 						data->scale = 0.5f;
 						bullet->velocity = currentOb->velocity;
@@ -681,7 +737,7 @@ void update_objects(ObjectBuffer* objs,float dt,ObjectBuffer* buffer,
 						PUSH_NEW_OBJ((*rend),data);
 
 						bullet->treeIndex = insert_to_tree(tree,bullet);
-						printf("SHOOOT objs num %d \n", objs->num);		
+						//printf("SHOOOT objs num %d \n", objs->num);		
 					
 					}
 				}
@@ -794,7 +850,7 @@ void update_objects(ObjectBuffer* objs,float dt,ObjectBuffer* buffer,
 			currentOb->base->position.z += currentOb->velocity.z * dt;
 
 			//printf("Velocity !%.3f %.3f %.3f \n", currentOb->velocity.x,currentOb->velocity.y,currentOb->velocity.z);
-
+		    currentOb->treeIndex = update_object_in_tree(tree,currentOb->treeIndex);
 
 			currentOb->acceleration.x = 0;
 			currentOb->acceleration.y = 0;
@@ -873,7 +929,17 @@ void update_objects(ObjectBuffer* objs,float dt,ObjectBuffer* buffer,
 				add_vec3(&cameraPos,&cameraPos,&currentOb->base->position);
 				//movementDir.x = 
 
+				const float particleBack = 2.f;
+				currentOb->particles->upVec = upVector;
+				vec3 particlePos = {0};
+				scale_vec3(&particlePos, &addVec, particleBack);
+				add_vec3(&particlePos, &particlePos, &currentOb->base->position);
+				currentOb->particles->position = particlePos; 
 
+				currentOb->particles->pitch = currentOb->base->Rotation.z; 
+				currentOb->particles->yaw = currentOb->base->Rotation.y; 
+
+				update_spawner(ps,currentOb->particles, dt,currentTime);
 				//add_vec3(&camToObj,&cameraPos,&camToObj);
 				//float CameraSpeed = 1.f;		
 				//vec3 camDistVector = {0};
@@ -924,6 +990,25 @@ void update_objects(ObjectBuffer* objs,float dt,ObjectBuffer* buffer,
 				camera->camUp = cameraUp;
 				create_lookat_mat4(&camera->view,&camera->cameraPos,&lookToVec,&camera->camUp);
 
+				
+				//distortion
+				const float MAX_DIST = 200.f;
+				float distFromCenter = vec3_lenght(&currentOb->base->position);
+				
+				if(distFromCenter > MAX_DIST)
+				{
+						*distScale += 0.0005f;
+						if(*distScale > 0.7f)
+								*distScale = 0.7f;
+				}
+				else
+				{
+						*distScale -= 0.003f;
+						if(*distScale < 0)
+								*distScale = 0.f;
+				}
+
+
 			}
 
 		}
@@ -954,6 +1039,27 @@ void update_objects(ObjectBuffer* objs,float dt,ObjectBuffer* buffer,
 			buffer->num = 0;
 				
 			
+		}
+		else if(currentOb->type == Planet)
+		{
+
+				query_area(tree,currentOb->base->position,currentOb->radius + 4.f,buffer);
+				for(int i2 = 0; i2 < buffer->num; i2++)
+				{
+						Object* collider = buffer->buff[i2];	
+						if(collider->type == Flocker || collider->type == Player)
+						{
+							vec3 dist = {0};
+							neg_vec3(&dist, &currentOb->base->position, &collider->base->position);
+
+							normalize_vec3(&dist);
+							scale_vec3(&dist,&dist, collider->type == Flocker ?  -0.5f : -0.05f);
+						    draw_box(drend,collider->base->position,collider->dims); 
+							add_vec3(&collider->velocity, &collider->velocity,&dist );
+						}
+				}
+				buffer->num = 0;
+				continue;
 		}
 		else
 		{

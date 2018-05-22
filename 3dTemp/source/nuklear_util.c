@@ -112,8 +112,16 @@ void render_nuklear()
 	glScissor(last_scissor_box[0], last_scissor_box[1], (GLsizei)last_scissor_box[2], (GLsizei)last_scissor_box[3]);
 #endif // RENDEFRGUI
 }
-
-ubyte show_engine_stats(struct nk_context *ctx,float fps,float frametime, vec3 cameraDir,float yaw,float pitch,vec3 camPos)
+		ubyte Pokemon = 1;
+    //uint  currentKernel = 0;	
+	//float kernerls[4][2] = { {1.f,1.f,1.f,1.f},{−8.f,1.f,1.f,1.f}  };
+	float sharpKernel[9] = {-1.f,-1.f,-1.f,-1.f,9.f,-1.f,-1.f,-1.f,-1.f};// {1.f,1.f,1.f,1.f,−8.f,1.f,1.f,1.f,1.f};
+	float blurKernel[9] =  {	1.0f / 16.f, 2.0f / 16.f, 1.0f / 16.f, 2.0f / 16.f, 
+	4.0f / 16.f, 2.0f / 16.f, 1.0f / 16.f, 2.0f / 16.f, 1.0f / 16.f };
+	float identityKernel[9] = {0,0,0,0,1.f,0,0,0,0};
+	float embossKernel[9] = {-2.f,-1.f,0,-1.f,1.f,1.f,0,1.f,2.f};
+    float *currentKernel = identityKernel;
+ubyte show_engine_stats(struct nk_context *ctx,float fps,float frametime, vec3 cameraDir,float yaw,float pitch,vec3 camPos,float* disto)
 {
 	ubyte ret = 0;
 	if (nk_begin(ctx, "Engine", nk_rect(10, 10, 300, 400), NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_SCALABLE | NK_WINDOW_MINIMIZABLE | NK_WINDOW_TITLE))
@@ -130,10 +138,40 @@ ubyte show_engine_stats(struct nk_context *ctx,float fps,float frametime, vec3 c
 		nk_label(ctx,str,NK_TEXT_LEFT);
 		sprintf(str,"camera pos %.3f , %.3f , %.3f", camPos.x,camPos.y,camPos.z);
 		nk_label(ctx,str,NK_TEXT_LEFT);
- 		if (nk_button_label(ctx, "button")) 
+ 		if (nk_button_label(ctx, "reload dll")) 
 		{
 			ret = 1;			
  		}
+		if (nk_button_label(ctx, "Pokemon")) 
+		{
+			Pokemon = 1;			
+ 		}
+		if (nk_button_label(ctx, "Blur")) 
+		{
+			Pokemon = 0;
+			currentKernel = blurKernel;
+ 		}
+		if (nk_button_label(ctx, "Sharp")) 
+		{
+			Pokemon = 0;
+			currentKernel = sharpKernel;
+ 		}
+		if (nk_button_label(ctx, "Emboss")) 
+		{
+			Pokemon = 0;
+			currentKernel = embossKernel;
+ 		}
+		if(Pokemon)
+		{
+				 nk_layout_row_begin(ctx, NK_STATIC, 30, 2);
+    {
+        nk_layout_row_push(ctx, 50);
+        nk_label(ctx, "Volume:", NK_TEXT_LEFT);
+        nk_layout_row_push(ctx, 110);
+        nk_slider_float(ctx, 0, disto, 1.0f, 0.1f);
+    }
+    nk_layout_row_end(ctx);
+		}
 
 	}
 	nk_end(ctx);

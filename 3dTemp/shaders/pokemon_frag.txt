@@ -1,0 +1,33 @@
+
+#version 330 core
+out vec4 FragColor;
+  
+in vec2 TexCoords;
+
+uniform sampler2D screenTexture;
+uniform sampler2D BlurTexture;
+uniform sampler2D DistTex;
+
+uniform float cutOff; 
+
+void main()
+{
+	vec3 distColor = vec3(texture(DistTex,TexCoords));
+    vec2 direction = normalize(vec2((distColor.r -0.5f)*2.f
+								, (distColor.g - 0.5f)*2.f));
+
+     //vec3  finalColor = texture()
+
+    vec3 blurrColor = vec3(texture(BlurTexture,TexCoords + cutOff * direction));
+	vec3 mainColor = vec3(texture(screenTexture, TexCoords + cutOff
+																*direction)); 
+    vec3 mapped = blurrColor + mainColor;
+
+    mapped = mapped / (mapped + vec3(1.f));
+
+	if(distColor.b < cutOff)
+		FragColor = mix( vec4(mapped,1), vec4(0,0,0,1), cutOff); //vec4( 0,0,0, 1.f); 
+    else
+		FragColor = vec4( mapped, 1.f); 
+
+}
